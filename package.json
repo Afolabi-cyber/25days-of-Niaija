@@ -1,0 +1,17 @@
+{
+  "name": "naija25",
+  "version": "1.0.0",
+  "description": "25 Days of Naija: December daily quiz",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.22.3"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

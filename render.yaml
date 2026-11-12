@@ -1,0 +1,29 @@
+# Render Blueprint: Render reads this when you create the service from the GitHub repo.
+# Paid "starter" plan = always on (free instances sleep and cold-start; this one doesn't).
+# The SQLite database lives on a persistent disk so players survive every redeploy.
+services:
+  - type: web
+    name: 25days-of-naija
+    runtime: node
+    plan: starter
+    region: frankfurt          # closest Render region to Nigeria
+    branch: main
+    autoDeploy: true           # every push to main redeploys
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /api/config
+    disk:
+      name: game-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DB_PATH
+        value: /var/data/game.db
+      - key: GAME_YEAR
+        value: "2026"
+      - key: ADMIN_PASSWORD
+        sync: false            # Render asks you to type this when you create the service
+      - key: SECRET
+        generateValue: true    # random value for signing admin sessions

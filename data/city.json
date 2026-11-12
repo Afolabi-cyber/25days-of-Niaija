@@ -1,0 +1,34 @@
+{
+  "_readme": "Do you know Lagos / Abuja challenge questions. FIRST option is correct (shuffled per player). 'photo' optional: {f, u} like places.json.",
+  "lagos": [
+    { "q": "Name this Lagos landmark.", "photo": { "f": "lekki-bridge.jpg", "u": "https://en.wikipedia.org/wiki/Special:FilePath/Lekki_link_bridge_at_night.jpg?width=900" }, "o": ["Lekki-Ikoyi Link Bridge", "Third Mainland Bridge", "Carter Bridge", "Eko Bridge"] },
+    { "q": "What is this building in Iganmu?", "photo": { "f": "national-theatre.jpg", "u": "https://en.wikipedia.org/wiki/Special:FilePath/National_Theater_in_Lagos_State-Nigeria.jpg?width=900" }, "o": ["National Theatre", "Tafawa Balewa Square", "Cocoa House", "Civic Centre"] },
+    { "q": "Computer Village, famous for phones and laptops, is in?", "o": ["Ikeja", "Yaba", "Surulere", "Apapa"] },
+    { "q": "Balogun Market is on?", "o": ["Lagos Island", "Ikeja", "Ikorodu", "Ajah"] },
+    { "q": "Lagos's main international airport is named after?", "o": ["Murtala Muhammed", "Nnamdi Azikiwe", "Obafemi Awolowo", "Tafawa Balewa"] },
+    { "q": "Badagry is famous for having?", "o": ["Nigeria's first storey building", "The biggest mall in Lagos", "The tallest tower in Africa", "Nigeria's oldest university"] },
+    { "q": "The Lekki Conservation Centre is famous for its?", "o": ["Canopy walkway", "Cable car", "Ski slope", "Lion safari"] },
+    { "q": "Freedom Park on Lagos Island used to be a?", "o": ["Colonial prison", "Football stadium", "Train station", "Royal palace"] },
+    { "q": "The University of Lagos (UNILAG) main campus is in?", "o": ["Akoka", "Ojo", "Ikeja", "Lekki"] },
+    { "q": "Eko Atlantic City is built on land reclaimed from?", "o": ["The Atlantic Ocean", "Lagos Lagoon", "Ogun River", "Lekki Lagoon"] },
+    { "q": "Which festival with white-robed masquerades is unique to Lagos?", "o": ["Eyo", "Osun-Osogbo", "Ojude Oba", "Argungu"] },
+    { "q": "The Third Mainland Bridge links Lagos Island to the?", "o": ["Mainland", "Lekki peninsula", "Badagry coast", "Epe lagoon"] },
+    { "q": "Tafawa Balewa Square is on?", "o": ["Lagos Island", "Victoria Island", "Ikeja", "Surulere"] },
+    { "q": "Which is the Yoruba name for Lagos?", "o": ["Eko", "Ile-Ife", "Oyo", "Ijebu"] }
+  ],
+  "abuja": [
+    { "q": "Name this Abuja landmark.", "photo": { "f": "abuja-gate.jpg", "u": "https://en.wikipedia.org/wiki/Special:FilePath/Abuja_gate.jpg?width=900" }, "o": ["Abuja City Gate", "Unity Fountain", "Millennium Park", "National Stadium"] },
+    { "q": "Name this giant rock on the road to Abuja.", "photo": { "f": "zuma-rock.jpg", "u": "https://en.wikipedia.org/wiki/Special:FilePath/Zuma_Rock.jpg?width=900" }, "o": ["Zuma Rock", "Aso Rock", "Olumo Rock", "Idanre Hills"] },
+    { "q": "Aso Rock towers behind which seat of power?", "o": ["The Presidential Villa", "The Supreme Court", "Central Bank", "The Emir's palace"] },
+    { "q": "In which year did Abuja officially become Nigeria's capital?", "o": ["1991", "1976", "1999", "1987"] },
+    { "q": "Abuja's international airport is named after?", "o": ["Nnamdi Azikiwe", "Murtala Muhammed", "Aminu Kano", "Tafawa Balewa"] },
+    { "q": "Zuma Rock appears on which naira note?", "o": ["₦100", "₦50", "₦500", "₦1000"] },
+    { "q": "Abuja is in which territory?", "o": ["Federal Capital Territory", "Niger State", "Nasarawa State", "Kogi State"] },
+    { "q": "Which of these is an Abuja district?", "o": ["Maitama", "Ikoyi", "Bodija", "Rumuola"] },
+    { "q": "Wuse, Garki and Asokoro are all?", "o": ["Districts in Abuja", "Markets in Kano", "Beaches in Lagos", "Hills in Jos"] },
+    { "q": "Abuja's national stadium is named after?", "o": ["Moshood Abiola", "Ahmadu Bello", "Nnamdi Azikiwe", "Obafemi Awolowo"] },
+    { "q": "Before Abuja, Nigeria's capital was?", "o": ["Lagos", "Kaduna", "Ibadan", "Enugu"] },
+    { "q": "The Presidential Villa, National Assembly and Supreme Court sit in the?", "o": ["Three Arms Zone", "Central Business District", "Jabi", "Gwarinpa"] },
+    { "q": "The Abuja City Gate was built to mark?", "o": ["The capital moving from Lagos", "Nigeria's independence", "The 1999 elections", "FESTAC '77"] }
+  ]
+}

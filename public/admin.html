@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin · 25 Days of Naija</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/icon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F3F5FC;--card:#fff;--ink:#121A3A;--ink2:#5A6386;--line:#E4E8F4;--accent:#2C44A0;--accent-soft:#DCE3FF;--gold:#F5B83D;--good:#17A35B;--bad:#D63B30;--warn:#C98410;
+  --font:'Bricolage Grotesque',system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px}
+button,input,select{font:inherit}
+header{background:#101C4A;color:#fff;padding:14px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;position:sticky;top:0;z-index:5}
+header .brand{font-weight:800;font-size:18px;display:flex;align-items:center;gap:10px}
+header .brand b{background:var(--gold);color:#101C4A;border-radius:9px;width:32px;height:32px;display:grid;place-items:center}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{background:none;border:0;color:#B9C6F2;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:700}
+nav button.on{background:rgba(255,255,255,.14);color:#fff}
+.clock{margin-left:auto;font-size:13px;color:#B9C6F2;text-align:right}
+.clock b{color:#fff}
+main{padding:20px 22px;max-width:1300px;margin:0 auto}
+h2{font-size:22px;margin:6px 0 14px;letter-spacing:-.01em}
+h3{font-size:16px;margin:0 0 4px}
+.sub{color:var(--ink2);font-size:13px;margin:0 0 12px}
+.grid{display:grid;gap:14px}
+.kpis{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+.kpi{background:var(--card);border-radius:16px;padding:14px 16px;border:1px solid var(--line)}
+.kpi .v{font-size:30px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi .l{color:var(--ink2);font-size:13px;font-weight:600}
+.cards2{grid-template-columns:repeat(auto-fit,minmax(360px,1fr));margin-top:14px}
+.cards4{grid-template-columns:repeat(auto-fit,minmax(270px,1fr));margin-top:14px}
+.card{background:var(--card);border-radius:16px;padding:16px;border:1px solid var(--line);min-width:0}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .axis{fill:var(--ink2);font-size:10px}
+.chart .grid-l{stroke:var(--line);stroke-width:1}
+.chart rect.bar{fill:var(--accent)}
+.chart rect.hit{fill:transparent;cursor:pointer}
+.chart rect.hit:hover + rect.bar,.chart g:hover rect.bar{fill:#4560D0}
+.tip{position:fixed;pointer-events:none;background:#121A3A;color:#fff;padding:7px 10px;border-radius:9px;font-size:13px;z-index:50;transform:translate(-50%,-115%);white-space:nowrap;display:none}
+.hb{display:grid;grid-template-columns:minmax(90px,38%) 1fr auto;gap:8px;align-items:center;margin:7px 0;font-size:14px}
+.hb .track{height:12px;background:var(--bg);border-radius:6px;overflow:hidden}
+.hb .fill{height:100%;background:var(--accent);border-radius:0 4px 4px 0}
+.hb .n{font-weight:700;font-variant-numeric:tabular-nums;min-width:44px;text-align:right}
+.hb .k{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;color:var(--ink2);font-weight:700;padding:9px 10px;border-bottom:2px solid var(--line);white-space:nowrap;position:sticky;top:0;background:var(--card)}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+tr.click{cursor:pointer}tr.click:hover td{background:#F7F8FE}
+.tablewrap{overflow:auto;max-height:70vh;border-radius:12px}
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.tools input,.tools select{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;min-width:200px}
+.btn{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+.btn.light{background:var(--accent-soft);color:var(--accent)}
+.btn.warn{background:#FCE3E1;color:var(--bad)}
+.tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:700;background:var(--accent-soft);color:var(--accent)}
+.tag.good{background:#DDF4E8;color:#0E7A42}.tag.bad{background:#FCE3E1;color:#A3241A}.tag.warn{background:#FFF0D2;color:#8A5A00}
+.feed{max-height:72vh;overflow:auto}
+.ev{display:flex;gap:12px;padding:10px 4px;border-bottom:1px solid var(--line);align-items:flex-start}
+.ev .t{color:var(--ink2);font-size:12px;min-width:68px;font-variant-numeric:tabular-nums}
+.ev .m{color:var(--ink2);font-size:12px;word-break:break-all}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(640px,100%);background:#fff;box-shadow:-10px 0 40px rgba(0,0,0,.15);z-index:20;overflow:auto;padding:20px;display:none}
+.drawer.open{display:block}
+.drawer .x{float:right}
+.login{max-width:380px;margin:12vh auto;background:#fff;border-radius:20px;padding:26px;border:1px solid var(--line)}
+.login input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;margin:10px 0 14px}
+.err{color:var(--bad);font-weight:600;font-size:14px}
+.funnel .hb{grid-template-columns:180px 1fr auto}
+.mini{font-size:12px;color:var(--ink2)}
+.hidden{display:none}
+.legend-note{font-size:12px;color:var(--ink2);margin-top:6px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="tip" id="tip"></div>
+<div class="drawer" id="drawer"></div>
+<script>
+(() => {
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let TOK = localStorage.getItem('n25_admin'), TAB = 'overview', timers = [];
+const fmt = (n) => Number(n || 0).toLocaleString();
+const wat = (t) => t ? new Date(t + 3600000).toISOString().replace('T', ' ').slice(0, 16) : '–';
+const ago = (t) => { const s = (Date.now() - t) / 1000; return s < 60 ? Math.round(s) + 's ago' : s < 3600 ? Math.round(s / 60) + 'm ago' : s < 86400 ? Math.round(s / 3600) + 'h ago' : Math.round(s / 86400) + 'd ago'; };
+const mins = (s) => s < 60 ? s + 's' : s < 3600 ? Math.round(s / 60) + 'm' : (s / 3600).toFixed(1) + 'h';
+async function api(p, body) {
+  const r = await fetch(p, { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + TOK }, body: body ? JSON.stringify(body) : undefined });
+  const d = await r.json().catch(() => ({}));
+  if (r.status === 401) { TOK = null; localStorage.removeItem('n25_admin'); login(); throw new Error('auth'); }
+  if (!r.ok) throw new Error(d.error || 'Error'); return d;
+}
+const tip = $('#tip');
+function showTip(e, html) { tip.innerHTML = html; tip.style.display = 'block'; tip.style.left = e.clientX + 'px'; tip.style.top = e.clientY + 'px'; }
+document.addEventListener('mouseout', (e) => { if (e.target.dataset && e.target.dataset.tip) tip.style.display = 'none'; });
+document.addEventListener('mousemove', (e) => { const t = e.target.dataset && e.target.dataset.tip; if (t) showTip(e, t); });
+
+// single-series column chart
+function colChart(data, { h = 150, fmtV = fmt } = {}) {
+  const W = 600, pad = { l: 34, r: 6, t: 10, b: 22 }, max = Math.max(1, ...data.map(d => d.v));
+  const step = (W - pad.l - pad.r) / data.length, bw = Math.max(2, step - 3), ih = h - pad.t - pad.b;
+  const nice = Math.ceil(max / 4) * 4 || 4;
+  let s = `<svg viewBox="0 0 ${W} ${h}" role="img">`;
+  for (let i = 0; i <= 2; i++) { const y = pad.t + ih - ih * i / 2; s += `<line class="grid-l" x1="${pad.l}" x2="${W - pad.r}" y1="${y}" y2="${y}"/><text class="axis" x="${pad.l - 6}" y="${y + 3}" text-anchor="end">${fmtV(Math.round(nice * i / 2))}</text>`; }
+  data.forEach((d, i) => {
+    const bh = d.v ? Math.max(2, ih * d.v / nice) : 0, x = pad.l + i * step + 1.5, y = pad.t + ih - bh;
+    s += `<g><rect class="bar" x="${x}" y="${y}" width="${bw}" height="${bh}" rx="${Math.min(4, bw / 2)}"/><rect class="hit" x="${pad.l + i * step}" y="${pad.t}" width="${step}" height="${ih}" data-tip="${esc(d.l)}: <b>${esc(fmtV(d.v))}</b>"/></g>`;
+    if (data.length <= 24 || i % 5 === 0 || i === data.length - 1) s += `<text class="axis" x="${x + bw / 2}" y="${h - 6}" text-anchor="middle">${esc(d.s ?? d.l)}</text>`;
+  });
+  return `<div class="chart">${s}</svg></div>`;
+}
+function hbars(rows, total) {
+  const max = Math.max(1, ...rows.map(r => r.n));
+  return rows.length ? rows.map(r => `<div class="hb"><span class="k" title="${esc(r.k)}">${esc(r.k ?? '–')}</span><span class="track"><span class="fill" style="display:block;width:${100 * r.n / max}%"></span></span><span class="n">${fmt(r.n)}${total ? ` <span class="mini">${Math.round(100 * r.n / total)}%</span>` : ''}</span></div>`).join('') : '<p class="sub">No data yet</p>';
+}
+
+function login() {
+  timers.forEach(clearInterval); timers = [];
+  $('#app').innerHTML = `<form class="login" id="lf"><h2>25 Days of Naija admin</h2><p class="sub">Enter the admin password set on the server (ADMIN_PASSWORD).</p><input type="password" id="pw" placeholder="Password" autofocus><div class="err" id="e"></div><button class="btn" style="width:100%">Sign in</button></form>`;
+  $('#lf').onsubmit = async (ev) => { ev.preventDefault(); try { const r = await fetch('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: $('#pw').value }) }).then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.error); return d; }); TOK = r.token; localStorage.setItem('n25_admin', TOK); shell(); } catch (e) { $('#e').textContent = e.message; } };
+}
+const TABS = [['overview', 'Overview'], ['live', 'Live feed'], ['users', 'Players'], ['questions', 'Questions'], ['winners', 'Daily winners'], ['safety', 'Safety'], ['settings', 'Settings & exports']];
+function shell() {
+  $('#app').innerHTML = `<header><div class="brand"><b>25</b>Admin</div><nav>${TABS.map(([k, l]) => `<button data-t="${k}" class="${TAB === k ? 'on' : ''}">${l}</button>`).join('')}</nav><div class="clock" id="clock"></div></header><main id="main"></main>`;
+  document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { TAB = b.dataset.t; shell(); });
+  timers.forEach(clearInterval); timers = [];
+  ({ overview, live, users, questions, winners, safety, settings })[TAB]();
+}
+function clockLine(o) {
+  $('#clock').innerHTML = `Game time <b>${wat(o.now)} WAT</b>${o.clockOffset ? ' <span class="tag warn">test clock</span>' : ''}<br>${o.live ? `Day ${o.live} is live` : o.next ? `Next: Day ${o.next}` : 'Season over'}`;
+}
+
+async function overview() {
+  const m = $('#main');
+  const load = async () => {
+    const o = await api('/api/admin/overview'); clockLine(o); const k = o.kpi;
+    const tiles = [['Players', k.users], ['New today', k.newToday], ['Active today', k.activeToday], ['Rounds today', k.roundsToday], ['Rounds total', k.roundsTotal], ['Avg score /7', k.avgScore],
+      ['Next-day return', k.d1 == null ? '–' : k.d1 + '%'], ['Total time', k.hoursTotal + 'h'], ['Avg time / player', k.avgMinsPerUser + 'm'], ['Shares', k.sharesTotal], ['Joined via invite', k.referred], ['WhatsApp opt-ins', k.waOptins], ['Squads', k.squads], ['Trips taken', k.trips], ['Road trips driven', k.drives], ['Hawker purchases', k.hawkerBuys], ['Challenges created', k.duels], ['Challenge games played', k.duelPlays], ['Power-ups used', k.powerups]];
+    const ser = (key, l) => colChart(o.series.map(s => ({ l: s.date, s: s.date.slice(8), v: s[key] })));
+    m.innerHTML = `<h2>Overview</h2><p class="sub">Updates every 30 seconds. Days are in West Africa Time.</p>
+      <div class="grid kpis">${tiles.map(([l, v]) => `<div class="kpi"><div class="v">${typeof v === 'number' ? fmt(v) : v}</div><div class="l">${l}</div></div>`).join('')}</div>
+      <div class="grid cards2">
+        <div class="card"><h3>Daily active players</h3><p class="sub">Last 30 days</p>${ser('active')}</div>
+        <div class="card"><h3>New sign-ups</h3><p class="sub">Last 30 days</p>${ser('signups')}</div>
+        <div class="card"><h3>Rounds finished</h3><p class="sub">Last 30 days</p>${ser('rounds')}</div>
+        <div class="card"><h3>Minutes spent in the app</h3><p class="sub">Last 30 days, all players</p>${ser('minutes')}</div>
+      </div>
+      <div class="grid cards2">
+        <div class="card funnel"><h3>Player funnel</h3><p class="sub">How many players reached each step</p>${hbars(o.funnel.map(([a, b]) => ({ k: a, n: b })), o.funnel[0][1])}</div>
+        <div class="card"><h3>When players are active</h3><p class="sub">Events by hour (WAT), last 7 days</p>${colChart(o.hours.map((v, i) => ({ l: `${String(i).padStart(2, '0')}:00`, s: i % 3 === 0 ? i : '', v })), { h: 160 })}</div>
+      </div>
+      <div class="grid cards4">
+        <div class="card"><h3>Players by state</h3>${hbars(o.states, k.users)}</div>
+        <div class="card"><h3>Players by school</h3>${hbars(o.schools)}</div>
+        <div class="card"><h3>Interactions</h3><p class="sub">All tracked events</p>${hbars(o.events.map(r => ({ k: (EVLABEL[r.k] || r.k).replace(/^\S+ /, ''), n: r.n })))}</div>
+        <div class="card"><h3>Share channels</h3>${hbars(o.shareChannels.map(r => ({ k: r.k || 'unknown', n: r.n })))}</div>
+      </div>`;
+  };
+  try { await load(); timers.push(setInterval(() => load().catch(() => {}), 30000)); } catch (e) { if (e.message !== 'auth') m.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+}
+
+const EVLABEL = { signup: '🆕 signed up', login: '🔑 signed in', round_start: '▶️ started a round', round_complete: '🏁 finished a round', share: '📤 shared', invite: '🤝 invite action', referral_reward: '🎁 got a referral reward', squad_create: '👥 created a squad', squad_join: '👥 joined a squad', squad_leave: '👋 left a squad', app_open: '📱 opened the app', tab: '🗂️ changed tab', board: '🏆 viewed leaderboard', result_view: '📊 viewed result', reminder_on: '🔔 turned on reminders', reminder_off: '🔕 turned off reminders', lang: '🗣️ changed language', how_to: '❓ read how it works', install_prompt: '⬇️ install prompt', installed: '✅ installed app', squad_view: '👥 viewed squad', sound: '🔊 sound toggle', trip_go: '🧳 took a trip', trip_quiz: '📍 answered a place question', powerup: '⚡ used a power-up', trip_view: '🗺️ opened Naija Trip', contacts_pick: '📇 picked contacts', reaction: '😀 reacted', drive_end: '🏁 finished a road trip', drive_buy: '🛒 bought from a hawker', duel_create: '⚔️ created a challenge', duel_join: '🤝 joined a challenge', duel_done: '🏁 finished a challenge', duel_share: '📤 shared a challenge', drive_fine: '🚨 got a road fine', lift_ask: '🙋🏾 asked for a lift', lift_pickup: '🚗 picked up a friend', trip_locate: '📍 shared location' };
+async function live() {
+  const m = $('#main'); let last = 0, rows = [];
+  m.innerHTML = `<h2>Live feed</h2><p class="sub">Every interaction as it happens. Refreshes every 5 seconds. Click a name to open the player.</p><div class="card feed" id="feed"></div>`;
+  const load = async () => {
+    const r = await api('/api/admin/events?after=' + last);
+    if (r.rows.length) { last = r.rows[0].id; rows = [...r.rows, ...rows].slice(0, 400); }
+    $('#feed').innerHTML = rows.map(e => `<div class="ev"><span class="t" title="${wat(e.created_at)}">${ago(e.created_at)}</span><span><a href="#" data-u="${e.uid}"><b>${esc(e.nickname || 'unknown')}</b></a> ${EVLABEL[e.type] || esc(e.type)}<div class="m">${e.meta ? esc(e.meta) : ''} ${e.ip ? '· ' + esc(e.ip) : ''}</div></span></div>`).join('') || '<p class="sub">Nothing yet</p>';
+    bindUserLinks();
+  };
+  try { await load(); timers.push(setInterval(() => load().catch(() => {}), 5000)); api('/api/admin/overview').then(clockLine).catch(() => {}); } catch {}
+}
+function bindUserLinks() { document.querySelectorAll('[data-u]').forEach(a => a.onclick = (e) => { e.preventDefault(); openUser(+a.dataset.u); }); }
+
+async function users() {
+  const m = $('#main');
+  m.innerHTML = `<h2>Players</h2><div class="tools"><input id="q" placeholder="Search name, phone, IP or state"><select id="s"><option value="recent">Recently active</option><option value="points">Most points</option><option value="time">Most time spent</option><option value="streak">Longest streak</option><option value="refs">Most invites</option><option value="new">Newest</option></select><a class="btn light" href="/api/admin/export/users?t=${TOK}">Download CSV</a></div><div class="card tablewrap" id="ut"></div>`;
+  const load = async () => {
+    const r = await api(`/api/admin/users?q=${encodeURIComponent($('#q').value)}&sort=${$('#s').value}`);
+    $('#ut').innerHTML = `<table><thead><tr><th>Player</th><th>Phone</th><th>State</th><th>Points</th><th>Coins</th><th>Streak</th><th>Rounds</th><th>Time</th><th>Invites</th><th>IP</th><th>Last seen</th></tr></thead><tbody>${r.rows.map(u => `<tr class="click" data-id="${u.id}"><td><b>${esc(u.nickname)}</b>${u.wa_optin ? ' <span class="tag good">🔔</span>' : ''}<div class="mini">${esc(u.school || '')}</div></td><td>${esc(u.phone)}</td><td>${esc(u.state || '')}</td><td>${fmt(u.total_points)}</td><td>${fmt(u.coins)}</td><td>${u.streak} <span class="mini">best ${u.best_streak}</span></td><td>${u.rounds}</td><td>${mins(u.time_spent)}</td><td>${u.refs}</td><td class="mini">${esc(u.ip_last)}</td><td class="mini">${u.last_seen ? ago(u.last_seen) : ''}</td></tr>`).join('')}</tbody></table>${r.rows.length ? '' : '<p class="sub" style="padding:12px">No players found</p>'}`;
+    document.querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => openUser(+tr.dataset.id));
+  };
+  let deb; $('#q').oninput = () => { clearTimeout(deb); deb = setTimeout(load, 300); }; $('#s').onchange = load;
+  try { await load(); api('/api/admin/overview').then(clockLine).catch(() => {}); } catch {}
+}
+async function openUser(id) {
+  const d = $('#drawer'); d.classList.add('open'); d.innerHTML = '<p class="sub">Loading…</p>';
+  try {
+    const r = await api('/api/admin/user/' + id), u = r.user;
+    d.innerHTML = `<button class="btn light x" id="dx">Close</button><h2>${esc(u.nickname)}</h2>
+      <p class="sub">${esc(u.phone)} · ${esc(u.state || '')} · ${esc(u.school || 'no school')} · joined ${wat(u.created_at)}</p>
+      <div class="grid kpis" style="grid-template-columns:repeat(4,1fr)">${[['Points', fmt(u.total_points)], ['Streak', u.streak + ' / best ' + u.best_streak], ['Time spent', mins(u.time_spent)], ['Savers', u.savers]].map(([l, v]) => `<div class="kpi"><div class="v" style="font-size:20px">${v}</div><div class="l">${l}</div></div>`).join('')}</div>
+      <p class="mini" style="margin-top:10px">Signup IP ${esc(u.ip_signup)} · last IP ${esc(u.ip_last)} · ${esc(u.ua || '')}</p>
+      ${r.sameIp.length ? `<p><span class="tag warn">Same IP</span> ${r.sameIp.map(x => `<a href="#" data-u="${x.id}">${esc(x.nickname)}</a>`).join(', ')}</p>` : ''}
+      <h3 style="margin-top:16px">Daily time</h3>${colChart(r.activity.slice().reverse().map(a => ({ l: a.date, s: a.date.slice(8), v: Math.round(a.secs / 60) })), { h: 120, fmtV: v => v + 'm' })}
+      <h3 style="margin-top:16px">Rounds</h3><table><tr><th>Day</th><th>Type</th><th>Score</th><th>Points</th><th>Avg answer</th><th>Finished</th></tr>${r.plays.map(p => `<tr><td>${p.day}</td><td>${p.official ? 'Official' : 'Practice'}</td><td>${p.finished_at ? p.correct + '/7' : '<span class="tag warn">unfinished</span>'}</td><td>${fmt(p.points)}</td><td>${p.avg_ms ? (p.avg_ms / 1000).toFixed(1) + 's' : ''}</td><td class="mini">${wat(p.finished_at)}</td></tr>`).join('')}</table>
+      <h3 style="margin-top:16px">Naija Trip</h3><p>${r.visits.map(v => `<span class="tag ${v.correct ? 'good' : ''}">${esc(v.place)} by ${esc(v.mode)}</span>`).join(' ') || '<span class="sub">No trips yet</span>'}</p>
+      <h3 style="margin-top:16px">Badges</h3><p>${r.badges.map(b => `<span class="tag">${esc(b.badge)}</span>`).join(' ') || '<span class="sub">None yet</span>'}</p>
+      <h3>Friends invited (${r.referrals.length})</h3><p class="mini">${r.referrals.map(x => esc(x.nickname) + (x.ref_rewarded ? ' ✓' : '')).join(', ') || 'None'}</p>
+      <h3 style="margin-top:16px">Activity timeline</h3><div>${r.events.map(e => `<div class="ev"><span class="t">${wat(e.created_at).slice(5)}</span><span>${EVLABEL[e.type] || esc(e.type)}<div class="m">${esc(e.meta || '')}</div></span></div>`).join('')}</div>`;
+    $('#dx').onclick = () => d.classList.remove('open'); bindUserLinks();
+  } catch (e) { d.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+}
+
+async function questions() {
+  const m = $('#main');
+  try {
+    const r = await api('/api/admin/questions');
+    m.innerHTML = `<h2>Questions</h2><p class="sub">Accuracy per question. Very low accuracy can mean the question is too hard or the answer is wrong, so check those first. Edit data/questions.json and restart to change questions.</p>
+      <div class="card tablewrap"><table><thead><tr><th>Day</th><th>#</th><th>Category</th><th>Question</th><th>Correct answer</th><th>Answers</th><th>% right</th><th>Avg time</th></tr></thead><tbody>${r.rows.map(x => `<tr><td>${x.day === 0 ? 'Warm-up' : x.day === 26 ? 'Crossover' : x.day}</td><td>${x.i + 1}</td><td>${esc(x.cat)}</td><td>${esc(x.q)}</td><td><b>${esc(x.answer)}</b></td><td>${x.n}</td><td>${x.pct == null ? '–' : `<span class="tag ${x.pct < 25 ? 'bad' : x.pct > 85 ? 'good' : ''}">${x.pct}%</span>`}</td><td>${x.ms ? (x.ms / 1000).toFixed(1) + 's' : '–'}</td></tr>`).join('')}</tbody></table></div>`;
+    api('/api/admin/overview').then(clockLine).catch(() => {});
+  } catch {}
+}
+
+async function winners() {
+  const m = $('#main');
+  const o = await api('/api/admin/overview').catch(() => null); if (o) clockLine(o);
+  const def = (o && (o.live || (o.next ? o.next - 1 : 25))) || 1;
+  m.innerHTML = `<h2>Daily winners</h2><p class="sub">Ranked by points, ties broken by who finished first. Use this list to send airtime.</p>
+    <div class="tools"><select id="d">${Array.from({ length: 26 }, (_, i) => `<option value="${i + 1}" ${i + 1 === def ? 'selected' : ''}>${i + 1 === 26 ? 'Crossover (31 Dec)' : 'Day ' + (i + 1)}</option>`).join('')}</select><a class="btn light" id="dl" href="#">Download CSV</a></div><div class="card tablewrap" id="wt"></div>`;
+  const load = async () => {
+    const d = $('#d').value; $('#dl').href = `/api/admin/export/winners?day=${d}&t=${TOK}`;
+    const r = await api('/api/admin/winners?day=' + d);
+    $('#wt').innerHTML = `<table><thead><tr><th>#</th><th>Player</th><th>Phone</th><th>State</th><th>Score</th><th>Points</th><th>Avg answer</th><th>Finished (WAT)</th></tr></thead><tbody>${r.rows.map((x, i) => `<tr class="click" data-id="${x.id}"><td><b>${i + 1}</b>${i < 10 ? ' 🏆' : ''}</td><td>${esc(x.nickname)}</td><td>${esc(x.phone)}</td><td>${esc(x.state || '')}</td><td>${x.correct}/7</td><td>${fmt(x.points)}</td><td>${(x.avg_ms / 1000).toFixed(1)}s ${x.avg_ms < 1200 ? '<span class="tag bad">suspiciously fast</span>' : ''}</td><td class="mini">${wat(x.finished_at)}</td></tr>`).join('')}</tbody></table>${r.rows.length ? '' : '<p class="sub" style="padding:12px">No official rounds for this day yet</p>'}`;
+    document.querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => openUser(+tr.dataset.id));
+  };
+  $('#d').onchange = load; load();
+}
+
+async function safety() {
+  const m = $('#main');
+  try {
+    const r = await api('/api/admin/flags'); api('/api/admin/overview').then(clockLine).catch(() => {});
+    m.innerHTML = `<h2>Safety</h2><p class="sub">Signals of fake accounts or cheating. Many Nigerian mobile users share one IP through their network, so check before acting.</p>
+      <div class="grid cards2">
+        <div class="card"><h3>IPs with 4+ accounts</h3><table><tr><th>IP</th><th>Accounts</th><th>Names</th></tr>${r.ips.map(x => `<tr><td>${esc(x.ip)}</td><td><span class="tag ${x.n >= 10 ? 'bad' : 'warn'}">${x.n}</span></td><td class="mini">${esc(x.names)}</td></tr>`).join('') || '<tr><td colspan=3 class="sub">None</td></tr>'}</table></div>
+        <div class="card"><h3>Players with 10+ invites</h3><table><tr><th>Player</th><th>Phone</th><th>Invites</th></tr>${r.referrers.map(x => `<tr class="click" data-id="${x.id}"><td>${esc(x.nickname)}</td><td>${esc(x.phone)}</td><td>${x.n}</td></tr>`).join('') || '<tr><td colspan=3 class="sub">None</td></tr>'}</table></div>
+        <div class="card"><h3>Perfect rounds under 1.2s per answer</h3><p class="sub">Humans rarely read and answer this fast.</p><table><tr><th>Player</th><th>Day</th><th>Avg</th></tr>${r.fast.map(x => `<tr class="click" data-id="${x.id}"><td>${esc(x.nickname)}</td><td>${x.day}</td><td>${(x.avg_ms / 1000).toFixed(2)}s</td></tr>`).join('') || '<tr><td colspan=3 class="sub">None</td></tr>'}</table></div>
+      </div>`;
+    document.querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => openUser(+tr.dataset.id));
+  } catch {}
+}
+
+async function settings() {
+  const m = $('#main'); const o = await api('/api/admin/overview').catch(() => null); if (o) clockLine(o);
+  m.innerHTML = `<h2>Settings & exports</h2>
+    <div class="grid cards2">
+      <div class="card"><h3>Test clock</h3><p class="sub">Pretend it's a different date and time to test any day before December. Players see this time too, so reset it before launch.</p>
+        <div class="tools"><input type="datetime-local" id="ck"><button class="btn" id="setck">Set game time (WAT)</button><button class="btn warn" id="rsck">Use real time</button></div>
+        <p class="mini">Quick picks: <a href="#" data-q="2026-11-30T12:00">30 Nov (pre-launch)</a> · <a href="#" data-q="2026-12-01T19:05">Day 1 open</a> · <a href="#" data-q="2026-12-05T21:00">Day 5</a> · <a href="#" data-q="2026-12-25T20:00">Christmas</a> · <a href="#" data-q="2026-12-31T19:30">Crossover</a></p></div>
+      <div class="card"><h3>Downloads</h3><p class="sub">CSV files open in Excel or Google Sheets.</p>
+        <p><a class="btn light" href="/api/admin/export/users?t=${TOK}">All players</a> <a class="btn light" href="/api/admin/export/reminders?t=${TOK}">WhatsApp reminder list</a> <a class="btn light" href="/api/admin/export/events?t=${TOK}">All interactions</a></p>
+        <p class="sub">The reminder list has everyone who switched on "Remind me on WhatsApp". Send them a broadcast at 7pm each day.</p></div>
+      <div class="card"><h3>Sign out</h3><button class="btn warn" id="so">Sign out of admin</button></div>
+    </div>`;
+  const setTo = async (v) => { const iso = new Date(v + ':00+01:00').toISOString(); await api('/api/admin/clock', { iso }); settings(); };
+  $('#setck').onclick = () => { if ($('#ck').value) setTo($('#ck').value); };
+  $('#rsck').onclick = async () => { await api('/api/admin/clock', { iso: null }); settings(); };
+  document.querySelectorAll('[data-q]').forEach(a => a.onclick = (e) => { e.preventDefault(); setTo(a.dataset.q); });
+  $('#so').onclick = () => { localStorage.removeItem('n25_admin'); TOK = null; login(); };
+}
+
+TOK ? shell() : login();
+})();
+</script>
+</body>
+</html>

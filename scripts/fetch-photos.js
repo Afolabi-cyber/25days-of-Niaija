@@ -1,16 +1,16 @@
 // Downloads the sign-up page photos into public/photos so the app serves them itself.
 // Run once on your machine or server:  node scripts/fetch-photos.js
 const fs = require('fs'), path = require('path');
-// Sign-up photos live in public/app.js; the daily "Naija in pictures" photos live in server.js.
-const src = ['public/app.js', 'server.js'].map(f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8')).join('\n');
+const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
 const re = /f: '([^']+)', u: '([^']+)'/g;
 const out = path.join(__dirname, '..', 'public', 'photos');
 fs.mkdirSync(out, { recursive: true });
+const places = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'places.json'), 'utf8')).places;
+const list = [];
+let m; while ((m = re.exec(src))) list.push([m[1], m[2]]);
+for (const p of places) if (!list.find(x => x[0] === p.photo.f)) list.push([p.photo.f, p.photo.u]);
 (async () => {
-  let m;
-  while ((m = re.exec(src))) {
-    const [, file, url] = m;
-    if (fs.existsSync(path.join(out, file)) && !process.argv.includes('--force')) { console.log('have', file); continue; }
+  for (const [file, url] of list) {
     try {
       const r = await fetch(url, { headers: { 'User-Agent': 'naija25-photo-fetch/1.0 (self-hosting credited photos)' }, redirect: 'follow' });
       if (!r.ok) throw new Error('HTTP ' + r.status);

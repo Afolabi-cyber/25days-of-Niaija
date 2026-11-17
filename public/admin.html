@@ -2,22 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Admin · 25 Days of Naija</title>
+<title>Admin · Detty December</title>
 <meta name="robots" content="noindex">
 <link rel="icon" href="/icon.svg">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#F3F5FC;--card:#fff;--ink:#121A3A;--ink2:#5A6386;--line:#E4E8F4;--accent:#2C44A0;--accent-soft:#DCE3FF;--gold:#F5B83D;--good:#17A35B;--bad:#D63B30;--warn:#C98410;
+:root{--bg:#F3F7F4;--card:#fff;--ink:#121A3A;--ink2:#5A6386;--line:#E4E8F4;--accent:#1E7A5A;--accent-soft:#D9F0E3;--gold:#F5B83D;--good:#17A35B;--bad:#D63B30;--warn:#C98410;
   --font:'Bricolage Grotesque',system-ui,sans-serif}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px}
 button,input,select{font:inherit}
-header{background:#101C4A;color:#fff;padding:14px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;position:sticky;top:0;z-index:5}
+header{background:#0B2A21;color:#fff;padding:14px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;position:sticky;top:0;z-index:5}
 header .brand{font-weight:800;font-size:18px;display:flex;align-items:center;gap:10px}
-header .brand b{background:var(--gold);color:#101C4A;border-radius:9px;width:32px;height:32px;display:grid;place-items:center}
+header .brand b{background:var(--gold);color:#0B2A21;border-radius:9px;width:32px;height:32px;display:grid;place-items:center}
 nav{display:flex;gap:4px;flex-wrap:wrap}
-nav button{background:none;border:0;color:#B9C6F2;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:700}
+nav button{background:none;border:0;color:#CFE8DC;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:700}
 nav button.on{background:rgba(255,255,255,.14);color:#fff}
-.clock{margin-left:auto;font-size:13px;color:#B9C6F2;text-align:right}
+.clock{margin-left:auto;font-size:13px;color:#CFE8DC;text-align:right}
 .clock b{color:#fff}
 main{padding:20px 22px;max-width:1300px;margin:0 auto}
 h2{font-size:22px;margin:6px 0 14px;letter-spacing:-.01em}
@@ -37,7 +37,7 @@ h3{font-size:16px;margin:0 0 4px}
 .chart .grid-l{stroke:var(--line);stroke-width:1}
 .chart rect.bar{fill:var(--accent)}
 .chart rect.hit{fill:transparent;cursor:pointer}
-.chart rect.hit:hover + rect.bar,.chart g:hover rect.bar{fill:#4560D0}
+.chart rect.hit:hover + rect.bar,.chart g:hover rect.bar{fill:#2E9B72}
 .tip{position:fixed;pointer-events:none;background:#121A3A;color:#fff;padding:7px 10px;border-radius:9px;font-size:13px;z-index:50;transform:translate(-50%,-115%);white-space:nowrap;display:none}
 .hb{display:grid;grid-template-columns:minmax(90px,38%) 1fr auto;gap:8px;align-items:center;margin:7px 0;font-size:14px}
 .hb .track{height:12px;background:var(--bg);border-radius:6px;overflow:hidden}
@@ -70,6 +70,7 @@ tr.click{cursor:pointer}tr.click:hover td{background:#F7F8FE}
 .mini{font-size:12px;color:var(--ink2)}
 .hidden{display:none}
 .legend-note{font-size:12px;color:var(--ink2);margin-top:6px}
+.qq{border-top:1px solid rgba(255,255,255,.1);padding:10px 0}.qq input{width:100%;margin:4px 0;padding:8px;border-radius:8px;border:1px solid #2E9B72;background:#0F3A2D;color:#fff}.qq-o{display:grid;grid-template-columns:1fr 1fr;gap:6px}.qq-a.right{border-color:#3DDC84}
 </style>
 </head>
 <body>
@@ -117,12 +118,12 @@ function hbars(rows, total) {
 
 function login() {
   timers.forEach(clearInterval); timers = [];
-  $('#app').innerHTML = `<form class="login" id="lf"><h2>25 Days of Naija admin</h2><p class="sub">Enter the admin password set on the server (ADMIN_PASSWORD).</p><input type="password" id="pw" placeholder="Password" autofocus><div class="err" id="e"></div><button class="btn" style="width:100%">Sign in</button></form>`;
+  $('#app').innerHTML = `<form class="login" id="lf"><h2>Detty December admin</h2><p class="sub">Enter the admin password set on the server (ADMIN_PASSWORD).</p><input type="password" id="pw" placeholder="Password" autofocus><div class="err" id="e"></div><button class="btn" style="width:100%">Sign in</button></form>`;
   $('#lf').onsubmit = async (ev) => { ev.preventDefault(); try { const r = await fetch('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: $('#pw').value }) }).then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.error); return d; }); TOK = r.token; localStorage.setItem('n25_admin', TOK); shell(); } catch (e) { $('#e').textContent = e.message; } };
 }
 const TABS = [['overview', 'Overview'], ['live', 'Live feed'], ['users', 'Players'], ['questions', 'Questions'], ['winners', 'Daily winners'], ['safety', 'Safety'], ['settings', 'Settings & exports']];
 function shell() {
-  $('#app').innerHTML = `<header><div class="brand"><b>25</b>Admin</div><nav>${TABS.map(([k, l]) => `<button data-t="${k}" class="${TAB === k ? 'on' : ''}">${l}</button>`).join('')}</nav><div class="clock" id="clock"></div></header><main id="main"></main>`;
+  $('#app').innerHTML = `<header><div class="brand"><b>🎄</b>Detty December admin</div><nav>${TABS.map(([k, l]) => `<button data-t="${k}" class="${TAB === k ? 'on' : ''}">${l}</button>`).join('')}</nav><div class="clock" id="clock"></div></header><main id="main"></main>`;
   document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { TAB = b.dataset.t; shell(); });
   timers.forEach(clearInterval); timers = [];
   ({ overview, live, users, questions, winners, safety, settings })[TAB]();
@@ -136,7 +137,7 @@ async function overview() {
   const load = async () => {
     const o = await api('/api/admin/overview'); clockLine(o); const k = o.kpi;
     const tiles = [['Players', k.users], ['New today', k.newToday], ['Active today', k.activeToday], ['Rounds today', k.roundsToday], ['Rounds total', k.roundsTotal], ['Avg score /7', k.avgScore],
-      ['Next-day return', k.d1 == null ? '–' : k.d1 + '%'], ['Total time', k.hoursTotal + 'h'], ['Avg time / player', k.avgMinsPerUser + 'm'], ['Shares', k.sharesTotal], ['Joined via invite', k.referred], ['WhatsApp opt-ins', k.waOptins], ['Squads', k.squads], ['Trips taken', k.trips], ['Road trips driven', k.drives], ['Hawker purchases', k.hawkerBuys], ['Challenges created', k.duels], ['Challenge games played', k.duelPlays], ['Power-ups used', k.powerups]];
+      ['Next-day return', k.d1 == null ? '–' : k.d1 + '%'], ['Total time', k.hoursTotal + 'h'], ['Avg time / player', k.avgMinsPerUser + 'm'], ['Shares', k.sharesTotal], ['Joined via invite', k.referred], ['WhatsApp opt-ins', k.waOptins], ['Squads', k.squads], ['Trips taken', k.trips], ['Drives finished', k.drives], ['Drive of the Day drivers today', k.dailyDrivers], ['Minutes driven', k.driveMins], ['Hawker purchases', k.hawkerBuys], ['Garage purchases', k.garageBuys], ['People on the journey home', k.travellers], ['Reached home', k.arrivedHome], ['3D legs driven', k.legsDriven], ['Live show players today', k.showPlayers], ['Friend quizzes taken', k.knowmeTakes], ['Party games hosted', k.partyGames], ['Questions waiting for approval', k.qPending], ['Stockings opened today', k.stockings], ['Road mystery boxes', k.roadBoxes], ['Challenges created', k.duels], ['Challenge games played', k.duelPlays], ['Gifts sent', k.giftsSent], ['Power-ups used', k.powerups]];
     const ser = (key, l) => colChart(o.series.map(s => ({ l: s.date, s: s.date.slice(8), v: s[key] })));
     m.innerHTML = `<h2>Overview</h2><p class="sub">Updates every 30 seconds. Days are in West Africa Time.</p>
       <div class="grid kpis">${tiles.map(([l, v]) => `<div class="kpi"><div class="v">${typeof v === 'number' ? fmt(v) : v}</div><div class="l">${l}</div></div>`).join('')}</div>
@@ -160,7 +161,7 @@ async function overview() {
   try { await load(); timers.push(setInterval(() => load().catch(() => {}), 30000)); } catch (e) { if (e.message !== 'auth') m.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
 }
 
-const EVLABEL = { signup: '🆕 signed up', login: '🔑 signed in', round_start: '▶️ started a round', round_complete: '🏁 finished a round', share: '📤 shared', invite: '🤝 invite action', referral_reward: '🎁 got a referral reward', squad_create: '👥 created a squad', squad_join: '👥 joined a squad', squad_leave: '👋 left a squad', app_open: '📱 opened the app', tab: '🗂️ changed tab', board: '🏆 viewed leaderboard', result_view: '📊 viewed result', reminder_on: '🔔 turned on reminders', reminder_off: '🔕 turned off reminders', lang: '🗣️ changed language', how_to: '❓ read how it works', install_prompt: '⬇️ install prompt', installed: '✅ installed app', squad_view: '👥 viewed squad', sound: '🔊 sound toggle', trip_go: '🧳 took a trip', trip_quiz: '📍 answered a place question', powerup: '⚡ used a power-up', trip_view: '🗺️ opened Naija Trip', contacts_pick: '📇 picked contacts', reaction: '😀 reacted', drive_end: '🏁 finished a road trip', drive_buy: '🛒 bought from a hawker', duel_create: '⚔️ created a challenge', duel_join: '🤝 joined a challenge', duel_done: '🏁 finished a challenge', duel_share: '📤 shared a challenge', drive_fine: '🚨 got a road fine', lift_ask: '🙋🏾 asked for a lift', lift_pickup: '🚗 picked up a friend', trip_locate: '📍 shared location' };
+const EVLABEL = { signup: '🆕 signed up', login: '🔑 signed in', round_start: '▶️ started a round', round_complete: '🏁 finished a round', share: '📤 shared', invite: '🤝 invite action', referral_reward: '🎁 got a referral reward', squad_create: '👥 created a squad', squad_join: '👥 joined a squad', squad_leave: '👋 left a squad', app_open: '📱 opened the app', tab: '🗂️ changed tab', board: '🏆 viewed leaderboard', result_view: '📊 viewed result', reminder_on: '🔔 turned on reminders', reminder_off: '🔕 turned off reminders', lang: '🗣️ changed language', how_to: '❓ read how it works', install_prompt: '⬇️ install prompt', installed: '✅ installed app', squad_view: '👥 viewed squad', sound: '🔊 sound toggle', trip_go: '🧳 took a trip', trip_quiz: '📍 answered a place question', powerup: '⚡ used a power-up', trip_view: '🗺️ opened Naija Trip', contacts_pick: '📇 picked contacts', reaction: '😀 reacted', drive_end: '🏁 finished a road trip', drive_buy: '🛒 bought from a hawker', duel_create: '⚔️ created a challenge', duel_join: '🤝 joined a challenge', duel_done: '🏁 finished a challenge', duel_share: '📤 shared a challenge', gift_send: '🎁 sent a gift', hat_on: '🎅🏾 put on a Santa hat', market_view: '🛍️ opened the Market', drive_start: '🔑 started a drive', drive_done: '🏁 finished a Detty Drive', drive_fine: '🚨 got a road fine', garage: '🔧 changed their car in the Garage', drive_hub: '🚗 opened Detty Drive', trip_locate: '📍 shared location', lift_ask: '🙋🏾 asked for a lift', lift_pickup: '🚗 picked up a friend', drive_share: '📤 shared a drive', stocking: '🧦 opened a Christmas stocking', road_box: '🎁 grabbed a mystery box on the road', journey_start: '🧳 started their journey home', leg_start: '🛣️ started a 3D leg', leg_done: '🏁 finished a leg of their journey', journey_express: '⚡ bought an express ticket', show_join: '🎤 joined Owambe Night Live', show_open: '🎤 opened the live show', show_life: '❤️ bought a spare life', knowme_make: '🫶🏾 made a know-me quiz', knowme_take: '🫶🏾 took a friend\'s quiz', party_game: '🪩 hosted a party game', q_submit: '✍🏾 sent a question' };
 async function live() {
   const m = $('#main'); let last = 0, rows = [];
   m.innerHTML = `<h2>Live feed</h2><p class="sub">Every interaction as it happens. Refreshes every 5 seconds. Click a name to open the player.</p><div class="card feed" id="feed"></div>`;
@@ -208,8 +209,21 @@ async function questions() {
   const m = $('#main');
   try {
     const r = await api('/api/admin/questions');
-    m.innerHTML = `<h2>Questions</h2><p class="sub">Accuracy per question. Very low accuracy can mean the question is too hard or the answer is wrong, so check those first. Edit data/questions.json and restart to change questions.</p>
-      <div class="card tablewrap"><table><thead><tr><th>Day</th><th>#</th><th>Category</th><th>Question</th><th>Correct answer</th><th>Answers</th><th>% right</th><th>Avg time</th></tr></thead><tbody>${r.rows.map(x => `<tr><td>${x.day === 0 ? 'Warm-up' : x.day === 26 ? 'Crossover' : x.day}</td><td>${x.i + 1}</td><td>${esc(x.cat)}</td><td>${esc(x.q)}</td><td><b>${esc(x.answer)}</b></td><td>${x.n}</td><td>${x.pct == null ? '–' : `<span class="tag ${x.pct < 25 ? 'bad' : x.pct > 85 ? 'good' : ''}">${x.pct}%</span>`}</td><td>${x.ms ? (x.ms / 1000).toFixed(1) + 's' : '–'}</td></tr>`).join('')}</tbody></table></div>`;
+    m.innerHTML = `<h2>Questions</h2><p class="sub">${r.total} questions in the pool. Every player gets a different mix each day and never sees a question twice until the pool runs dry. Low accuracy can mean a wrong answer, so check those first.</p>
+      <div class="card"><h3>Owambe Night Live</h3><p class="sub">The show runs every night at 8:30pm. To test it now, start today's show early.</p><div class="tools"><button class="btn light" id="shw">Start today's show in 60 seconds</button></div></div>
+      <div class="card"><h3>Waiting for approval (${r.queue.length})</h3>
+        <div class="tools"><input id="aiTopic" placeholder="Topic for AI drafts, e.g. Calabar Christmas, Igbo New Year" style="flex:1;min-width:220px"><button class="btn light" id="aiGo" ${r.ai ? '' : 'disabled title="Set ANTHROPIC_API_KEY on the server"'}>✨ Draft 10 with AI</button></div>
+        ${r.ai ? '' : '<p class="sub">AI drafts are off. Set ANTHROPIC_API_KEY on the server to turn them on. Player questions still arrive here.</p>'}
+        ${r.queue.map(x => `<div class="qq" data-id="${x.id}"><div class="mini">${x.source === 'ai' ? '✨ AI draft' : `✍🏾 from ${esc(x.n || 'player')}`} · ${esc(x.c)}${x.note ? ` · <i>${esc(x.note)}</i>` : ''}</div>
+          <input class="qq-q" value="${esc(x.q)}"><div class="qq-o">${x.o.map((o, k) => `<input class="qq-a ${k === 0 ? 'right' : ''}" value="${esc(o)}">`).join('')}</div>
+          <div class="tools"><button class="btn light qq-ok">✅ Approve</button><button class="btn light qq-no">Reject</button></div></div>`).join('') || '<p class="sub">Nothing waiting.</p>'}</div>
+      <div class="card tablewrap"><table><thead><tr><th>ID</th><th>Category</th><th>Question</th><th>Correct answer</th><th>By</th><th>Answers</th><th>% right</th><th>Avg time</th></tr></thead><tbody>${r.rows.map(x => `<tr><td class="mini">${esc(x.id)}</td><td>${esc(x.cat)}</td><td>${esc(x.q)}</td><td><b>${esc(x.answer)}</b></td><td class="mini">${esc(x.by || '')}</td><td>${x.n}</td><td>${x.pct == null ? '–' : `<span class="tag ${x.pct < 25 ? 'bad' : x.pct > 85 ? 'good' : ''}">${x.pct}%</span>`}</td><td>${x.ms ? (x.ms / 1000).toFixed(1) + 's' : '–'}</td></tr>`).join('')}</tbody></table></div>`;
+    $('#shw').onclick = async () => { await api('/api/admin/show/start', { inSec: 60 }); alert('Show starts in 60 seconds. Open the app to play.'); };
+    $('#aiGo').onclick = async () => { $('#aiGo').disabled = true; $('#aiGo').textContent = 'Drafting…'; try { const x = await api('/api/admin/questions/ai', { topic: $('#aiTopic').value }); alert(`${x.added} drafts added. Check each fact before approving.`); } catch (e) { alert(e.message); } questions(); };
+    document.querySelectorAll('.qq').forEach(el => {
+      const send = async (ok) => { await api('/api/admin/questions/review', { id: +el.dataset.id, approve: ok, q: el.querySelector('.qq-q').value, o: [...el.querySelectorAll('.qq-a')].map(i => i.value) }); questions(); };
+      el.querySelector('.qq-ok').onclick = () => send(true); el.querySelector('.qq-no').onclick = () => send(false);
+    });
     api('/api/admin/overview').then(clockLine).catch(() => {});
   } catch {}
 }

@@ -1,11 +1,11 @@
 {
-  "name": "25 Days of Naija",
-  "short_name": "Naija 25",
-  "description": "One quick Naija quiz every evening in December.",
+  "name": "Detty December",
+  "short_name": "Detty Dec",
+  "description": "Nigeria's fun place for Christmas and New Year with your people.",
   "start_url": "/?src=pwa",
   "display": "standalone",
-  "background_color": "#101C4A",
-  "theme_color": "#101C4A",
+  "background_color": "#0B2A21",
+  "theme_color": "#0B2A21",
   "icons": [
     {"src": "/icon-192.png", "sizes": "192x192", "type": "image/png"},
     {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}

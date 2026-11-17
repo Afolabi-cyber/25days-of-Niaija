@@ -1,0 +1,1385 @@
+{
+ "_readme": "Extra rotating questions. First option is always the correct answer.",
+ "questions": [
+  {
+   "c": "Christmas",
+   "q": "What does \"IJGB\" stand for?",
+   "o": [
+    "I Just Got Back",
+    "I Just Got Bored",
+    "In Jollof God Believe",
+    "I Jog Go Back"
+   ]
+  },
+  {
+   "c": "Christmas",
+   "q": "Boxing Day falls on which date?",
+   "o": [
+    "26 December",
+    "24 December",
+    "1 January",
+    "31 December"
+   ]
+  },
+  {
+   "c": "Christmas",
+   "q": "In pidgin, \"Detty December\" means a December that is…",
+   "o": [
+    "Dirty (wild and full of parties)",
+    "Dry",
+    "Quiet",
+    "Cold"
+   ]
+  },
+  {
+   "c": "Christmas",
+   "q": "The harmattan wind blows dust into Nigeria from which desert?",
+   "o": [
+    "Sahara",
+    "Kalahari",
+    "Namib",
+    "Gobi"
+   ]
+  },
+  {
+   "c": "Christmas",
+   "q": "Which Nigerian city is famous for its December carnival, \"Africa's biggest street party\"?",
+   "o": [
+    "Calabar",
+    "Kano",
+    "Ibadan",
+    "Jos"
+   ]
+  },
+  {
+   "c": "Christmas",
+   "q": "\"Crossover night\" happens on which date?",
+   "o": [
+    "31 December",
+    "25 December",
+    "26 December",
+    "1 December"
+   ]
+  },
+  {
+   "c": "Christmas",
+   "q": "Zobo, the December drink, is made from which plant?",
+   "o": [
+    "Hibiscus (roselle) flowers",
+    "Ginger roots only",
+    "Cashew leaves",
+    "Palm fronds"
+   ]
+  },
+  {
+   "c": "Christmas",
+   "q": "Chapman is a popular Nigerian…",
+   "o": [
+    "Fruity party drink",
+    "Christmas cake",
+    "Dance step",
+    "Masquerade"
+   ]
+  },
+  {
+   "c": "Christmas",
+   "q": "In Igbo, \"mmanwu\" means…",
+   "o": [
+    "Masquerade",
+    "Christmas",
+    "Palm wine",
+    "Village square"
+   ]
+  },
+  {
+   "c": "Christmas",
+   "q": "Kunu is a drink made mainly from…",
+   "o": [
+    "Millet or sorghum",
+    "Coconut",
+    "Pineapple peel",
+    "Cocoa"
+   ]
+  },
+  {
+   "c": "Christmas",
+   "q": "Which meat is the classic star of a Nigerian Christmas lunch?",
+   "o": [
+    "Chicken",
+    "Turkey only",
+    "Snail",
+    "Fish"
+   ]
+  },
+  {
+   "c": "Christmas",
+   "q": "\"Chin chin\" is mainly made from…",
+   "o": [
+    "Flour",
+    "Rice",
+    "Beans",
+    "Cassava"
+   ]
+  },
+  {
+   "c": "Christmas",
+   "q": "Ileya is the Yoruba name for which festival?",
+   "o": [
+    "Eid al-Adha",
+    "Christmas",
+    "Easter",
+    "New Year"
+   ]
+  },
+  {
+   "c": "Christmas",
+   "q": "\"Aso ebi\" literally means…",
+   "o": [
+    "Family cloth",
+    "Party food",
+    "New shoes",
+    "Big hat"
+   ]
+  },
+  {
+   "c": "Christmas",
+   "q": "The word \"owambe\" comes from Yoruba and means…",
+   "o": [
+    "It is happening there",
+    "Let us eat",
+    "Money everywhere",
+    "Dance well"
+   ]
+  },
+  {
+   "c": "Christmas",
+   "q": "Spraying naira notes at parties can be punished under which law?",
+   "o": [
+    "Central Bank of Nigeria Act",
+    "Land Use Act",
+    "Electoral Act",
+    "Copyright Act"
+   ]
+  },
+  {
+   "c": "Christmas",
+   "q": "The harmattan season in Nigeria usually starts around…",
+   "o": [
+    "Late November",
+    "April",
+    "July",
+    "September"
+   ]
+  },
+  {
+   "c": "Christmas",
+   "q": "At an owambe, who holds the microphone and hypes the guests?",
+   "o": [
+    "The MC",
+    "The caterer",
+    "The DJ's mother",
+    "The gateman"
+   ]
+  },
+  {
+   "c": "Christmas",
+   "q": "\"Small chops\" usually include puff-puff, samosa and…",
+   "o": [
+    "Spring rolls",
+    "Pounded yam",
+    "Ewedu",
+    "Okra"
+   ]
+  },
+  {
+   "c": "Travel",
+   "q": "The Niger Bridge connects Asaba to which city?",
+   "o": [
+    "Onitsha",
+    "Awka",
+    "Benin City",
+    "Lokoja"
+   ]
+  },
+  {
+   "c": "Travel",
+   "q": "Ore, the famous stopover town on the Benin road, is in which state?",
+   "o": [
+    "Ondo",
+    "Ogun",
+    "Edo",
+    "Osun"
+   ]
+  },
+  {
+   "c": "Travel",
+   "q": "At Lokoja, the River Niger meets which river?",
+   "o": [
+    "Benue",
+    "Ogun",
+    "Cross River",
+    "Kaduna"
+   ]
+  },
+  {
+   "c": "Travel",
+   "q": "What does FRSC stand for?",
+   "o": [
+    "Federal Road Safety Corps",
+    "Federal Road Service Council",
+    "Freeway Rescue Service Corps",
+    "Federal Railway Safety Commission"
+   ]
+  },
+  {
+   "c": "Travel",
+   "q": "LASTMA manages traffic in which state?",
+   "o": [
+    "Lagos",
+    "Abuja",
+    "Rivers",
+    "Ogun"
+   ]
+  },
+  {
+   "c": "Travel",
+   "q": "What is the airport code for Lagos' international airport?",
+   "o": [
+    "LOS",
+    "LAG",
+    "LGS",
+    "NGL"
+   ]
+  },
+  {
+   "c": "Travel",
+   "q": "What is the airport code for Abuja's airport?",
+   "o": [
+    "ABV",
+    "ABJ",
+    "ABU",
+    "FCT"
+   ]
+  },
+  {
+   "c": "Travel",
+   "q": "Murtala Muhammed International Airport is in which city?",
+   "o": [
+    "Lagos",
+    "Abuja",
+    "Kano",
+    "Port Harcourt"
+   ]
+  },
+  {
+   "c": "Travel",
+   "q": "Nnamdi Azikiwe International Airport is in which city?",
+   "o": [
+    "Abuja",
+    "Enugu",
+    "Onitsha",
+    "Lagos"
+   ]
+  },
+  {
+   "c": "Travel",
+   "q": "Olumo Rock is in which city?",
+   "o": [
+    "Abeokuta",
+    "Ibadan",
+    "Osogbo",
+    "Ilorin"
+   ]
+  },
+  {
+   "c": "Travel",
+   "q": "Idanre Hills are in which state?",
+   "o": [
+    "Ondo",
+    "Ekiti",
+    "Kwara",
+    "Plateau"
+   ]
+  },
+  {
+   "c": "Travel",
+   "q": "Ikogosi Warm Springs are in which state?",
+   "o": [
+    "Ekiti",
+    "Osun",
+    "Oyo",
+    "Kogi"
+   ]
+  },
+  {
+   "c": "Travel",
+   "q": "Yankari Game Reserve is in which state?",
+   "o": [
+    "Bauchi",
+    "Kaduna",
+    "Taraba",
+    "Niger"
+   ]
+  },
+  {
+   "c": "Travel",
+   "q": "Obudu Mountain Resort is in which state?",
+   "o": [
+    "Cross River",
+    "Akwa Ibom",
+    "Benue",
+    "Plateau"
+   ]
+  },
+  {
+   "c": "Travel",
+   "q": "Ogbunike Caves are in which state?",
+   "o": [
+    "Anambra",
+    "Enugu",
+    "Imo",
+    "Ebonyi"
+   ]
+  },
+  {
+   "c": "Travel",
+   "q": "Zuma Rock stands near Abuja in which state?",
+   "o": [
+    "Niger",
+    "Kogi",
+    "Nasarawa",
+    "Kaduna"
+   ]
+  },
+  {
+   "c": "Travel",
+   "q": "Erin Ijesha waterfalls are in which state?",
+   "o": [
+    "Osun",
+    "Ondo",
+    "Oyo",
+    "Ekiti"
+   ]
+  },
+  {
+   "c": "Travel",
+   "q": "VIO officers on the road check your…",
+   "o": [
+    "Vehicle papers and roadworthiness",
+    "School certificate",
+    "Phone",
+    "Luggage for food"
+   ]
+  },
+  {
+   "c": "Travel",
+   "q": "Gurara Falls are in which state?",
+   "o": [
+    "Niger",
+    "Kwara",
+    "Kaduna",
+    "Kogi"
+   ]
+  },
+  {
+   "c": "Travel",
+   "q": "Owu Falls are in which state?",
+   "o": [
+    "Kwara",
+    "Ogun",
+    "Osun",
+    "Ekiti"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "What is the capital of Imo State?",
+   "o": [
+    "Owerri",
+    "Umuahia",
+    "Aba",
+    "Orlu"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "What is the capital of Abia State?",
+   "o": [
+    "Umuahia",
+    "Aba",
+    "Owerri",
+    "Ohafia"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "What is the capital of Delta State?",
+   "o": [
+    "Asaba",
+    "Warri",
+    "Sapele",
+    "Ughelli"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "What is the capital of Akwa Ibom State?",
+   "o": [
+    "Uyo",
+    "Eket",
+    "Calabar",
+    "Ikot Ekpene"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "What is the capital of Ebonyi State?",
+   "o": [
+    "Abakaliki",
+    "Afikpo",
+    "Enugu",
+    "Ogoja"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "What is the capital of Osun State?",
+   "o": [
+    "Osogbo",
+    "Ile-Ife",
+    "Ilesa",
+    "Ede"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "What is the capital of Ekiti State?",
+   "o": [
+    "Ado-Ekiti",
+    "Ikere",
+    "Akure",
+    "Ijero"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "What is the capital of Kogi State?",
+   "o": [
+    "Lokoja",
+    "Okene",
+    "Idah",
+    "Kabba"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "What is the capital of Plateau State?",
+   "o": [
+    "Jos",
+    "Bukuru",
+    "Pankshin",
+    "Shendam"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "What is the capital of Bayelsa State?",
+   "o": [
+    "Yenagoa",
+    "Brass",
+    "Ogbia",
+    "Port Harcourt"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "What is the capital of Benue State?",
+   "o": [
+    "Makurdi",
+    "Gboko",
+    "Otukpo",
+    "Katsina-Ala"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "What is the capital of Kwara State?",
+   "o": [
+    "Ilorin",
+    "Offa",
+    "Jebba",
+    "Omu-Aran"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "What is the capital of Ondo State?",
+   "o": [
+    "Akure",
+    "Ondo",
+    "Owo",
+    "Ore"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "What is the capital of Ogun State?",
+   "o": [
+    "Abeokuta",
+    "Ijebu-Ode",
+    "Sagamu",
+    "Ota"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "What is the capital of Anambra State?",
+   "o": [
+    "Awka",
+    "Onitsha",
+    "Nnewi",
+    "Ekwulobia"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "What is the capital of Edo State?",
+   "o": [
+    "Benin City",
+    "Auchi",
+    "Ekpoma",
+    "Uromi"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "What is the capital of Cross River State?",
+   "o": [
+    "Calabar",
+    "Ikom",
+    "Ogoja",
+    "Obudu"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "What is the capital of Nasarawa State?",
+   "o": [
+    "Lafia",
+    "Keffi",
+    "Akwanga",
+    "Karu"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "What is the capital of Taraba State?",
+   "o": [
+    "Jalingo",
+    "Wukari",
+    "Bali",
+    "Gembu"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Which slogan is on Lagos State plate numbers?",
+   "o": [
+    "Centre of Excellence",
+    "Pace Setter",
+    "Gateway",
+    "Coal City"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Which slogan is on Oyo State plate numbers?",
+   "o": [
+    "Pace Setter",
+    "Sunshine",
+    "Heartland",
+    "Big Heart"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Which slogan is on Enugu State plate numbers?",
+   "o": [
+    "Coal City",
+    "Light of the Nation",
+    "Gateway",
+    "Land of Promise"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Which slogan is on Imo State plate numbers?",
+   "o": [
+    "Eastern Heartland",
+    "God's Own",
+    "Coal City",
+    "Treasure Base"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Which slogan is on Plateau State plate numbers?",
+   "o": [
+    "Home of Peace and Tourism",
+    "Centre of Commerce",
+    "Big Heart",
+    "Sunshine"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Which slogan is on Ogun State plate numbers?",
+   "o": [
+    "Gateway",
+    "Pace Setter",
+    "Land of Promise",
+    "Fountain of Knowledge"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Which slogan is on Ondo State plate numbers?",
+   "o": [
+    "Sunshine",
+    "Living Spring",
+    "Heartbeat",
+    "Harmony"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Which slogan is on Delta State plate numbers?",
+   "o": [
+    "The Big Heart",
+    "Treasure Base",
+    "Light of the Nation",
+    "Gateway"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Which slogan is on Rivers State plate numbers?",
+   "o": [
+    "Treasure Base of the Nation",
+    "Big Heart",
+    "God's Own",
+    "Land of Promise"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Which slogan is on Akwa Ibom State plate numbers?",
+   "o": [
+    "Land of Promise",
+    "Glory of All Lands",
+    "Heartland",
+    "Gateway"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Which slogan is on Edo State plate numbers?",
+   "o": [
+    "Heartbeat of the Nation",
+    "Light of the Nation",
+    "Pace Setter",
+    "Sunshine"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Which slogan is on Anambra State plate numbers?",
+   "o": [
+    "Light of the Nation",
+    "Coal City",
+    "Heartbeat",
+    "God's Own"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Which slogan is on Abia State plate numbers?",
+   "o": [
+    "God's Own State",
+    "Land of Promise",
+    "Coal City",
+    "Heartland"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Which slogan is on Kwara State plate numbers?",
+   "o": [
+    "State of Harmony",
+    "Living Spring",
+    "Gateway",
+    "Sunshine"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Which slogan is on Osun State plate numbers?",
+   "o": [
+    "State of the Living Spring",
+    "Harmony",
+    "Pace Setter",
+    "Fountain of Knowledge"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Which slogan is on Ekiti State plate numbers?",
+   "o": [
+    "Fountain of Knowledge",
+    "Living Spring",
+    "Sunshine",
+    "Harmony"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Which slogan is on Kano State plate numbers?",
+   "o": [
+    "Centre of Commerce",
+    "Home of Peace",
+    "Harmony",
+    "Big Heart"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "How many states does Nigeria have?",
+   "o": [
+    "36",
+    "30",
+    "37",
+    "40"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "How many local government areas does Nigeria have?",
+   "o": [
+    "774",
+    "600",
+    "36",
+    "999"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Abuja officially became Nigeria's capital in which year?",
+   "o": [
+    "1991",
+    "1976",
+    "1960",
+    "2000"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Who designed the Nigerian flag?",
+   "o": [
+    "Taiwo Akinkunmi",
+    "Herbert Macaulay",
+    "Nnamdi Azikiwe",
+    "Ahmadu Bello"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "In 2024 Nigeria went back to which national anthem?",
+   "o": [
+    "Nigeria, We Hail Thee",
+    "Arise, O Compatriots",
+    "Lift Every Voice",
+    "God Bless Nigeria"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "What is the highest point in Nigeria?",
+   "o": [
+    "Chappal Waddi",
+    "Olumo Rock",
+    "Zuma Rock",
+    "Obudu Plateau"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Chappal Waddi is in which state?",
+   "o": [
+    "Taraba",
+    "Plateau",
+    "Adamawa",
+    "Benue"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Nigeria introduced the naira in which year?",
+   "o": [
+    "1973",
+    "1960",
+    "1980",
+    "1999"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "Before the naira, Nigeria used the…",
+   "o": [
+    "Pound",
+    "Dollar",
+    "Cedi",
+    "Franc"
+   ]
+  },
+  {
+   "c": "Naija",
+   "q": "The Benin Bronzes were made in the ancient kingdom of…",
+   "o": [
+    "Benin",
+    "Oyo",
+    "Kanem-Bornu",
+    "Nri"
+   ]
+  },
+  {
+   "c": "Food",
+   "q": "Amala is made from…",
+   "o": [
+    "Yam flour (elubo)",
+    "Rice",
+    "Beans",
+    "Corn"
+   ]
+  },
+  {
+   "c": "Food",
+   "q": "Abacha is made from…",
+   "o": [
+    "Cassava",
+    "Plantain",
+    "Yam",
+    "Rice"
+   ]
+  },
+  {
+   "c": "Food",
+   "q": "Tuwo shinkafa is made from…",
+   "o": [
+    "Rice",
+    "Yam",
+    "Millet",
+    "Cassava"
+   ]
+  },
+  {
+   "c": "Food",
+   "q": "Nkwobi is made with…",
+   "o": [
+    "Cow foot",
+    "Snail",
+    "Goat head",
+    "Fish"
+   ]
+  },
+  {
+   "c": "Food",
+   "q": "\"Isi ewu\" means…",
+   "o": [
+    "Goat head",
+    "Cow tail",
+    "Chicken feet",
+    "Fish head"
+   ]
+  },
+  {
+   "c": "Food",
+   "q": "Ofada rice is usually eaten with…",
+   "o": [
+    "Ayamase (designer stew)",
+    "Egusi",
+    "Okra",
+    "Garden egg sauce only"
+   ]
+  },
+  {
+   "c": "Food",
+   "q": "Banga soup is made from…",
+   "o": [
+    "Palm fruit",
+    "Melon seeds",
+    "Groundnut",
+    "Okra"
+   ]
+  },
+  {
+   "c": "Food",
+   "q": "Edikang ikong soup comes from which part of Nigeria?",
+   "o": [
+    "Akwa Ibom and Cross River",
+    "Kano and Katsina",
+    "Lagos and Ogun",
+    "Benue and Kogi"
+   ]
+  },
+  {
+   "c": "Food",
+   "q": "Gizdodo is gizzard mixed with…",
+   "o": [
+    "Fried plantain",
+    "Rice",
+    "Yam",
+    "Beans"
+   ]
+  },
+  {
+   "c": "Food",
+   "q": "\"Boli\" is…",
+   "o": [
+    "Roasted plantain",
+    "Fried yam",
+    "Boiled corn",
+    "Bean cake"
+   ]
+  },
+  {
+   "c": "Food",
+   "q": "Akara and moi moi are both made from…",
+   "o": [
+    "Beans",
+    "Corn",
+    "Yam",
+    "Rice"
+   ]
+  },
+  {
+   "c": "Food",
+   "q": "The spice used on suya is called…",
+   "o": [
+    "Yaji",
+    "Ogiri",
+    "Uziza",
+    "Iru"
+   ]
+  },
+  {
+   "c": "Food",
+   "q": "Asun is spicy grilled…",
+   "o": [
+    "Goat meat",
+    "Fish",
+    "Chicken",
+    "Beef liver"
+   ]
+  },
+  {
+   "c": "Food",
+   "q": "Ewa agoyin is beans served with…",
+   "o": [
+    "A dark pepper sauce",
+    "Egusi",
+    "Custard",
+    "Okra"
+   ]
+  },
+  {
+   "c": "Slang",
+   "q": "What does \"Japa\" mean?",
+   "o": [
+    "To leave the country",
+    "To dance",
+    "To eat fast",
+    "To sleep"
+   ]
+  },
+  {
+   "c": "Slang",
+   "q": "What does \"Sapa\" mean?",
+   "o": [
+    "Being broke",
+    "A big party",
+    "Good luck",
+    "Heavy rain"
+   ]
+  },
+  {
+   "c": "Slang",
+   "q": "What does \"Aproko\" mean?",
+   "o": [
+    "A gossip",
+    "A rich man",
+    "A taxi",
+    "A fool"
+   ]
+  },
+  {
+   "c": "Slang",
+   "q": "What does \"Ajebota\" mean?",
+   "o": [
+    "Someone raised in comfort",
+    "A street fighter",
+    "A farmer",
+    "A pastor"
+   ]
+  },
+  {
+   "c": "Slang",
+   "q": "What does \"K-leg\" mean?",
+   "o": [
+    "Something has gone wrong",
+    "A dance move",
+    "A type of shoe",
+    "A football trick"
+   ]
+  },
+  {
+   "c": "Slang",
+   "q": "What does \"Shine your eye\" mean?",
+   "o": [
+    "Be alert",
+    "Wear sunglasses",
+    "Cry",
+    "Sleep"
+   ]
+  },
+  {
+   "c": "Slang",
+   "q": "What does \"Odogwu\" mean?",
+   "o": [
+    "A champion or strong man",
+    "A thief",
+    "A child",
+    "A stranger"
+   ]
+  },
+  {
+   "c": "Slang",
+   "q": "What does \"Gbege\" mean?",
+   "o": [
+    "Trouble",
+    "Money",
+    "Food",
+    "Fun"
+   ]
+  },
+  {
+   "c": "Slang",
+   "q": "What does \"Ojoro\" mean?",
+   "o": [
+    "Cheating",
+    "Dancing",
+    "Praying",
+    "Cooking"
+   ]
+  },
+  {
+   "c": "Slang",
+   "q": "What does \"Opor\" mean?",
+   "o": [
+    "Plenty",
+    "Empty",
+    "Small",
+    "Late"
+   ]
+  },
+  {
+   "c": "Slang",
+   "q": "What does \"Shakara\" mean?",
+   "o": [
+    "Forming or showing off",
+    "Crying",
+    "Running",
+    "Fasting"
+   ]
+  },
+  {
+   "c": "Slang",
+   "q": "What does \"Shayo\" mean?",
+   "o": [
+    "Drinking alcohol",
+    "Eating rice",
+    "Dancing",
+    "Sleeping"
+   ]
+  },
+  {
+   "c": "Slang",
+   "q": "What does \"Gbas gbos\" mean?",
+   "o": [
+    "A fight",
+    "A party",
+    "A wedding",
+    "A song"
+   ]
+  },
+  {
+   "c": "Slang",
+   "q": "What does \"Abeg\" mean?",
+   "o": [
+    "Please",
+    "Thank you",
+    "Go away",
+    "Hurry"
+   ]
+  },
+  {
+   "c": "Sports",
+   "q": "Nigeria won Olympic football gold at which Games?",
+   "o": [
+    "Atlanta 1996",
+    "Sydney 2000",
+    "Seoul 1988",
+    "Beijing 2008"
+   ]
+  },
+  {
+   "c": "Sports",
+   "q": "In which year did the Super Eagles win their first AFCON?",
+   "o": [
+    "1980",
+    "1994",
+    "2013",
+    "1976"
+   ]
+  },
+  {
+   "c": "Sports",
+   "q": "Which Nigerian set the world record in the 100m hurdles in 2022?",
+   "o": [
+    "Tobi Amusan",
+    "Blessing Okagbare",
+    "Ese Brume",
+    "Favour Ofili"
+   ]
+  },
+  {
+   "c": "Sports",
+   "q": "Which country has won the most Women's AFCON titles?",
+   "o": [
+    "Nigeria",
+    "South Africa",
+    "Ghana",
+    "Cameroon"
+   ]
+  },
+  {
+   "c": "Sports",
+   "q": "Who won the 2023 African Footballer of the Year?",
+   "o": [
+    "Victor Osimhen",
+    "Mohamed Salah",
+    "Sadio Mané",
+    "Achraf Hakimi"
+   ]
+  },
+  {
+   "c": "Sports",
+   "q": "Who won the 2024 African Footballer of the Year?",
+   "o": [
+    "Ademola Lookman",
+    "Victor Osimhen",
+    "Achraf Hakimi",
+    "Simon Adingra"
+   ]
+  },
+  {
+   "c": "Nollywood",
+   "q": "Which 1992 film is often called the start of Nollywood?",
+   "o": [
+    "Living in Bondage",
+    "Osuofia in London",
+    "The Wedding Party",
+    "Glamour Girls"
+   ]
+  },
+  {
+   "c": "Nollywood",
+   "q": "Who directed \"The Wedding Party\" (2016)?",
+   "o": [
+    "Kemi Adetiba",
+    "Funke Akindele",
+    "Kunle Afolayan",
+    "Mo Abudu"
+   ]
+  },
+  {
+   "c": "Nollywood",
+   "q": "\"A Tribe Called Judah\" (2023) was made by…",
+   "o": [
+    "Funke Akindele",
+    "Kemi Adetiba",
+    "Toyin Abraham",
+    "Genevieve Nnaji"
+   ]
+  },
+  {
+   "c": "Nollywood",
+   "q": "Who played Osuofia in \"Osuofia in London\"?",
+   "o": [
+    "Nkem Owoh",
+    "Sam Loco",
+    "Zack Orji",
+    "Pete Edochie"
+   ]
+  },
+  {
+   "c": "Nollywood",
+   "q": "Aki and Pawpaw were played by Chinedu Ikedieze and…",
+   "o": [
+    "Osita Iheme",
+    "Nkem Owoh",
+    "Patience Ozokwo",
+    "John Okafor"
+   ]
+  },
+  {
+   "c": "Music",
+   "q": "Who sings \"Calm Down\"?",
+   "o": [
+    "Rema",
+    "Ckay",
+    "Asake",
+    "Fireboy DML"
+   ]
+  },
+  {
+   "c": "Music",
+   "q": "\"Mr Money with the Vibe\" is an album by…",
+   "o": [
+    "Asake",
+    "Olamide",
+    "Zlatan",
+    "Burna Boy"
+   ]
+  },
+  {
+   "c": "Music",
+   "q": "Davido's 2023 album is called…",
+   "o": [
+    "Timeless",
+    "A Better Time",
+    "A Good Time",
+    "Omo Baba Olowo"
+   ]
+  },
+  {
+   "c": "Music",
+   "q": "Burna Boy won his first Grammy with which album?",
+   "o": [
+    "Twice as Tall",
+    "African Giant",
+    "I Told Them",
+    "Love, Damini"
+   ]
+  },
+  {
+   "c": "Music",
+   "q": "Who is called the pioneer of Afrobeat?",
+   "o": [
+    "Fela Kuti",
+    "King Sunny Ade",
+    "Ebenezer Obey",
+    "Sunny Okosuns"
+   ]
+  },
+  {
+   "c": "Music",
+   "q": "\"African Queen\" was sung by…",
+   "o": [
+    "2Baba",
+    "D'banj",
+    "P-Square",
+    "Wizkid"
+   ]
+  },
+  {
+   "c": "Music",
+   "q": "Which record label did Olamide found?",
+   "o": [
+    "YBNL",
+    "Mavin",
+    "Chocolate City",
+    "Starboy"
+   ]
+  },
+  {
+   "c": "Ask Mummy",
+   "q": "What did NEPA stand for?",
+   "o": [
+    "National Electric Power Authority",
+    "Nigerian Energy and Power Agency",
+    "National Electricity Production Agency",
+    "New Electric Power Association"
+   ]
+  },
+  {
+   "c": "Ask Mummy",
+   "q": "Who hosted \"Who Wants to Be a Millionaire?\" in Nigeria?",
+   "o": [
+    "Frank Edoho",
+    "Olu Jacobs",
+    "Ali Baba",
+    "Basketmouth"
+   ]
+  },
+  {
+   "c": "Ask Mummy",
+   "q": "\"War Against Indiscipline\" (WAI) was launched in which year?",
+   "o": [
+    "1984",
+    "1999",
+    "1975",
+    "1993"
+   ]
+  },
+  {
+   "c": "Ask Mummy",
+   "q": "\"Operation Feed the Nation\" was launched under which leader?",
+   "o": [
+    "Olusegun Obasanjo",
+    "Shehu Shagari",
+    "Ibrahim Babangida",
+    "Yakubu Gowon"
+   ]
+  },
+  {
+   "c": "Ask Mummy",
+   "q": "SAP, the 1986 economic programme, stands for…",
+   "o": [
+    "Structural Adjustment Programme",
+    "State Agriculture Plan",
+    "Savings and Pension",
+    "Special Aid Package"
+   ]
+  },
+  {
+   "c": "Ask Mummy",
+   "q": "Which TV station showed \"The Village Headmaster\"?",
+   "o": [
+    "NTA",
+    "AIT",
+    "Channels",
+    "Silverbird"
+   ]
+  },
+  {
+   "c": "Ask Mummy",
+   "q": "Nigeria became a republic in which year?",
+   "o": [
+    "1963",
+    "1960",
+    "1966",
+    "1979"
+   ]
+  }
+ ]
+}

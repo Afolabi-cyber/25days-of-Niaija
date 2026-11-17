@@ -1,6 +1,8 @@
-/* Naija Drive v2: a driver's-eye road trip on real Nigerian roads.
-   NaijaDrive.start({ to, from, fromId, homeCity, vehicle, km, pickups, seed, race, api, beep, toast, onCoins })
-     -> Promise<{ fares, checks, fines, friends, crashes, stars, secs, bonus }>      (race -> { secs, crashes, view })
+/* Detty Drive (Naija Drive v3): a driver's-eye Detty December road trip on real Nigerian roads.
+   NaijaDrive.start({ to, from, fromId, homeCity, vehicle, km, pickups, seed, race, mode, garage, ghost, sound, coach, api, beep, toast, onCoins })
+     mode: 'trip' (paid road trip) | 'daily' (Drive of the Day, same road for everybody) | 'free' (practice) | race via o.race
+     -> Promise<{ fares, checks, fines, friends, crashes, stars, secs, bonus, style, path, snap }>      (race -> { secs, crashes, view })
+   NaijaDrive.preview(el, opts) -> stop(): a live autopilot road for the home screen and the Drive tab.
    Pseudo-3D segment road (the classic arcade-racer technique). Every sprite is drawn with canvas paths: no images. */
 (() => {
 'use strict';
@@ -15,6 +17,7 @@ const RT = {
   bridge:     { lanes: 3, two: false, div: true,  w: 2100, lim: 80,  g: 'water',    kerb: 'rail', icon: '🌉', label: 'Bridge' },
   highway:    { lanes: 2, two: true,  div: false, w: 1700, lim: 100, g: 'bush',     kerb: null,   icon: '🌴', label: 'Highway' },
 };
+const rt2 = (type) => RT[type].two;
 const laneXs = (rt) => rt.two ? [-0.5, 0.5] : Array.from({ length: rt.lanes }, (_, i) => -1 + (2 * i + 1) / rt.lanes);
 const VEH = {
   okada: { name: 'Okada', max: 80,  acc: 24, w: 240, cap: 1,  fuel: .7,  gear: 'helmet',   draw: 'okada', emoji: '🛵' },
@@ -77,10 +80,18 @@ const DEST = {
     { name: "Umaru Musa Yar'Adua Expressway", type: 'expressway', final: true }] },
 };
 const SIGNS = ['MAMA PUT', 'VULCANIZER', 'POS HERE', 'RECHARGE CARD', 'BARBING SALON', 'CHOPS & DRINKS', 'TAILOR', 'SUYA SPOT', 'PHARMACY', 'MAMA NKECHI STORE', 'GOD DEY', 'FASHION HOUSE', 'PROVISIONS', 'BUKA', 'SHAWARMA', 'GEN REPAIRS', 'PURE WATER', 'CHEMIST', 'PHOTOCOPY', 'NO PARKING O', 'AMALA JOINT', 'PHONE REPAIRS'];
-const BILLS = [['DETTY DECEMBER', 'Enjoy, but drive safe', '#E5483C', '#fff'], ['JOLLOF FESTIVAL', 'Saturday · Free entry', '#F2C200', '#121A3A'], ['SAY NO TO DRUNK DRIVING', 'Road Safety', '#1F4FA8', '#fff'], ['OWAMBE SEASON', 'Aso-ebi on sale', '#8E44AD', '#fff'], ['PAY YOUR TAX', 'Build your state', '#1E8449', '#fff'], ['BUY NAIJA', 'Grow the naira', '#0B6B3A', '#fff'], ['CROSSOVER CONCERT', '31 Dec · Live band', '#121A3A', '#F5B83D'], ['SPEED THRILLS BUT KILLS', 'Arrive alive', '#C0392B', '#fff']];
+const BILLS = [['DETTY DECEMBER', 'Enjoy, but drive safe', '#E5483C', '#fff'], ['MERRY CHRISTMAS', 'From all of us to you', '#0F3A2D', '#F5B83D'], ['IJGB WELCOME HOME', 'Lagos missed you 🇳🇬', '#155C45', '#fff'], ['CHRISTMAS SALES', 'Up to 50% off · Mall', '#D7263D', '#fff'], ['JOLLOF FESTIVAL', 'Saturday · Free entry', '#F2C200', '#121A3A'], ['SAY NO TO DRUNK DRIVING', 'Road Safety', '#1F4FA8', '#fff'], ['OWAMBE SEASON', 'Aso-ebi on sale', '#8E44AD', '#fff'], ['PAY YOUR TAX', 'Build your state', '#1E8449', '#fff'], ['BUY NAIJA', 'Grow the naira', '#0B6B3A', '#fff'], ['CROSSOVER CONCERT', '31 Dec · Live band', '#121A3A', '#F5B83D'], ['SPEED THRILLS BUT KILLS', 'Arrive alive', '#C0392B', '#fff']];
 const BANNERS = ['CROSSOVER NIGHT · 31 DEC', 'CHRISTMAS CAROL · ALL WELCOME', 'HOLY GHOST NIGHT', 'THANKSGIVING SERVICE'];
 const STICKERS = ['NO KING AS GOD', 'NO FOOD FOR LAZY MAN', "GOD'S TIME IS THE BEST", 'EXCUSE ME DIVINE', 'NO CONDITION IS PERMANENT', 'SHINE YOUR EYE'];
-const ITEMS = { water: ['💧', 'Pure water', 5], gala: ['🌭', 'Gala', 10], chips: ['🍌', 'Plantain chips', 10], bread: ['🥖', 'Agege bread', 15] };
+const ITEMS = { water: ['💧', 'Pure water', 5], gala: ['🌭', 'Gala', 10], chips: ['🍌', 'Plantain chips', 10], bread: ['🥖', 'Agege bread', 15], chinchin: ['🥨', 'Chin chin', 15], puff: ['🍩', 'Puff-puff', 10],
+  tree: ['🎄', 'Mini Christmas tree', 50, 1], chicken: ['🍗', 'Christmas chicken', 80, 1], hamper: ['🧺', 'Christmas hamper', 180, 1] };
+const HAWK_COL = { water: '#2980B9', gala: '#D35400', chips: '#16A085', bread: '#8E44AD', chinchin: '#C0392B', puff: '#E67E22', tree: '#1E8449', chicken: '#B9770E', hamper: '#D7263D' };
+const RADIO = ['🎙️ Detty FM: Traffic update, Third Mainland dey move small small. Shine your eye!', '🎙️ Detty FM: Shout out to all the IJGBs wey land this December. Welcome home!', '🎙️ Detty FM: Owambe alert! Aso ebi people, una don collect una own?',
+  '🎙️ Detty FM: Crossover night loading… Where you go enter 31st?', '🎙️ Detty FM: Na Christmas o! Who don buy chicken? 🍗', '🎙️ Detty FM: Weather report: harmattan don land. Use cream, use headlight.',
+  '🎙️ Detty FM: Road safety says: no drink and drive this season 🙏🏾', '🎙️ Detty FM: Next song go burst your speaker 🔊', '🎙️ Detty FM: Na who carry pure water go Lekki? Enjoyment minister dey road!',
+  '🎙️ Detty FM: Lagos, how market? Christmas sales dey Balogun today.', '🎙️ Detty FM: If you hear "knock-out", no fear. Na small pikin dey play banger 😂'];
+const IJGB = ['"Hi! Is there AC in this car? It\'s so hot!" 🥵 IJGB from London paid double', '"Omo, Lagos has changed o!" IJGB from Houston paid double 🇺🇸', '"Can I pay with card?" 😂 IJGB from Toronto paid double 🇨🇦'];
+const IS_DEC = () => { const d = new Date(Date.now() + 3600000); return d.getUTCMonth() === 11 || (d.getUTCMonth() === 0 && d.getUTCDate() <= 6); };
 const CRASH = ['Ah! Who taught you to drive? 😂', 'Danfo driver don vex 😤', 'Na so you wan reach? Slow down o 🙏🏾', 'Your insurance no go like this 😬', 'Bros, eyes on the road 👀', 'Mechanic go happy today 😅'];
 const CHECK = {
   police:  { who: 'Police', em: '👮🏾‍♂️', sign: 'POLICE CHECKPOINT', uni: { top: '#1B1B1B', bot: '#1B1B1B', head: 'beret', hc: '#1B1B1B' }, van: ['#22324F', '#fff', 'POLICE'],
@@ -107,6 +118,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const ease = { in: (a, b, p) => a + (b - a) * p * p, io: (a, b, p) => a + (b - a) * ((-Math.cos(p * Math.PI) / 2) + .5) };
 function shade(hex, f) { const n = parseInt(hex.slice(1), 16); return `rgb(${Math.round((n >> 16 & 255) * f)},${Math.round((n >> 8 & 255) * f)},${Math.round((n & 255) * f)})`; }
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const esc2 = (t) => String(t ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
 // drawing primitives (module-level context, set per frame)
 let c = null, N = false, TIME = 0;
@@ -140,6 +152,7 @@ function person(x, by, h, d) {
   else if (d.head === 'beret') ell(x - w * .05, by - h * .99, w * .42, h * .06, d.hc || '#111');
   else if (d.head === 'hijab') { circ(x, by - h * .87, w * .42, d.hc || '#2B59C3'); circ(x, by - h * .86, w * .25, sk); }
   else if (d.head === 'helmet') circ(x, by - h * .9, w * .4, d.hc || '#C0392B');
+  else if (d.head === 'santa') { poly('#D7263D', [x - w * .38, by - h * .95, x + w * .38, by - h * .95, x + w * .5, by - h * 1.15]); circ(x + w * .5, by - h * 1.15, w * .1, '#fff'); rect(x - w * .4, by - h * .99, w * .8, h * .05, '#fff'); ell(x, by - h * .8, w * .3, h * .07, '#F5F5F5'); }
   else ell(x, by - h * .97, w * .3, h * .045, '#111');
   if (d.tray) { rect(x - w * .95, by - h * 1.06, w * 1.9, h * .06, '#C49A6C'); text(d.tray, x, by - h * 1.17, h * .24, '#000', 400); }
   if (d.radar) { rect(x + w * .5, by - h * .74, w * .5, h * .07, '#222'); }
@@ -179,6 +192,7 @@ function veh(t, cx, by, w, d = {}) {
     poly(N ? '#0b0f18' : '#1d2433', [x + w * .16, y + h * .4, x + w * .84, y + h * .4, x + w * .75, y + h * .08, x + w * .25, y + h * .08]);
     tail(x + w * .04, y + h * .5, w * .17, h * .1); tail(x + w * .79, y + h * .5, w * .17, h * .1);
     rect(cx - w * .13, y + h * .66, w * .26, h * .1, '#F4F4F4'); rect(cx - w * .13, y + h * .66, w * .26, h * .025, '#1E8449');
+    if (d.plate && w > 70) fit(d.plate, cx, y + h * .725, w * .22, h * .055, '#1F2A44');
     if (d.label) { rect(x, y + h * .78, w, h * .1, d.lc2 || '#C0392B'); fit(d.label, cx, y + h * .26, w * .5, h * .12, d.lc || '#fff'); }
     if (d.siren) { const on = (TIME * 4 | 0) % 2; rect(cx - w * .22, y - h * .05, w * .2, h * .06, on ? '#2E6BFF' : '#11265E'); rect(cx + w * .02, y - h * .05, w * .2, h * .06, on ? '#5A0F0F' : '#FF2D2D'); if (N) glow(cx, y, w * .4, on ? 'rgba(46,107,255,.5)' : 'rgba(255,45,45,.5)'); }
     return;
@@ -192,6 +206,7 @@ function veh(t, cx, by, w, d = {}) {
     if (!onc) fit(d.sticker || 'NO KING AS GOD', cx, y + h * .575, w * .8, h * .075, '#111');
     tail(x + w * .03, y + h * .72, w * .12, h * .1); tail(x + w * .85, y + h * .72, w * .12, h * .1);
     rect(cx - w * .12, y + h * .74, w * .24, h * .08, '#F4F4F4');
+    if (d.plate && w > 70) fit(d.plate, cx, y + h * .785, w * .2, h * .05, '#1F2A44');
     if (d.cond && !onc) person(x + w * 1.03, by - h * .1, h * .62, { top: '#F5F5F5', bot: '#2C3E50', skin: SKIN[1], wave: true });
     return;
   }
@@ -389,8 +404,54 @@ function arch(cx, by, rw, k, s) {
   fit(s.label, cx, by - h - 250 * k, (r - l) * .95, 300 * k, '#fff');
   if (N) { glow(l, by - h, rw * .4, 'rgba(255,240,200,.35)'); glow(r, by - h, rw * .4, 'rgba(255,240,200,.35)'); }
 }
-const SPAN = { gantry, footbridge, arch };
-const PAINT = { bld, unfinished, church, mosque, kiosk, lamp, lamp2, palm, tree, bush, billboard, epole, busstop, speedsign, tlight, drum, pothole, leaves, hut, stall, fuelst, canoe, wreck, officer, van, parked,
+function xlights(cx, by, rw, k, s) {
+  const h = 2100 * k, l = cx - rw * 1.32, r = cx + rw * 1.32, pw = Math.max(1, 60 * k);
+  rect(l - pw / 2, by - h, pw, h, '#4a4f57'); rect(r - pw / 2, by - h, pw, h, '#4a4f57');
+  const sag = 260 * k, n = 18, cols = ['#FF3B4E', '#FFD23F', '#3DDC84', '#4FC3F7', '#FF8A3D'];
+  c.strokeStyle = 'rgba(30,30,30,.7)'; c.lineWidth = Math.max(1, 10 * k); c.beginPath(); c.moveTo(l, by - h); c.quadraticCurveTo(cx, by - h + sag * 2, r, by - h); c.stroke();
+  for (let i = 1; i < n; i++) { const t = i / n, x = (1 - t) * (1 - t) * l + 2 * (1 - t) * t * cx + t * t * r, y = (1 - t) * (1 - t) * (by - h) + 2 * (1 - t) * t * (by - h + sag * 2) + t * t * (by - h);
+    const on = ((i + Math.floor(TIME * 3)) % 3) !== 0, col = cols[(i + s.seed) % cols.length]; circ(x, y + 30 * k, Math.max(1, 34 * k), on ? col : shade(col, .4)); if (on && N) glow(x, y + 30 * k, 200 * k, col + '66'); }
+  if (s.label) { const bw = (r - l) * .46; rrect(cx - bw / 2, by - h + sag * .7, bw, 300 * k, 4, s.bg || '#D7263D'); fit(s.label, cx, by - h + sag * .7 + 150 * k, bw * .9, 190 * k, '#fff'); }
+}
+function cattle(cx, by, w, d) { // one cow, side view
+  const h = w * .62, x = cx - w / 2, col = d.col || '#F2EDE4';
+  rect(x + w * .15, by - h * .45, w * .08, h * .45, '#5a4a3a'); rect(x + w * .72, by - h * .45, w * .08, h * .45, '#5a4a3a');
+  ell(cx, by - h * .62, w * .42, h * .26, col); if (d.spot) ell(cx - w * .1, by - h * .66, w * .14, h * .12, '#6B4A2B');
+  const hd = d.dir > 0 ? 1 : -1; ell(cx + hd * w * .46, by - h * .72, w * .12, h * .14, col);
+  c.strokeStyle = '#E8E0C8'; c.lineWidth = Math.max(1, w * .03); c.beginPath(); c.moveTo(cx + hd * w * .42, by - h * .84); c.lineTo(cx + hd * w * .36, by - h * 1.02); c.moveTo(cx + hd * w * .52, by - h * .84); c.lineTo(cx + hd * w * .6, by - h * 1.02); c.stroke();
+}
+function tollgate(cx, by, rw, k, s) {
+  const h = 1500 * k, l = cx - rw * 1.3, r = cx + rw * 1.3;
+  rect(l, by - h - 260 * k, r - l, 260 * k, N ? '#1d3a6b' : '#1F4FA8'); fit(s.label, cx, by - h - 130 * k, (r - l) * .9, 170 * k, '#fff');
+  for (let i = 0; i < 4; i++) { const bx = l + (r - l) * (i / 3.6); rect(bx, by - h, 120 * k, h, '#C9CED6'); }
+  rrect(r - rw * .25, by - h * .7, rw * .18, h * .7, 3, '#F5F5F5'); rect(r - rw * .22, by - h * .62, rw * .12, h * .2, '#1d2433');
+  const ax = cx + rw * .9, ay = by - h * .45, len = rw * 1.8;
+  c.save(); c.translate(ax, ay); c.rotate(s.open ? -1.3 : 0);
+  for (let i = 0; i < 8; i++) rect(-len + len * i / 8, -45 * k, len / 8, 90 * k, i % 2 ? '#fff' : '#E5483C');
+  c.restore(); rect(ax - 60 * k, ay - 60 * k, 120 * k, h * .45 + 60 * k, '#333');
+  if (N) glow(cx, by - h, rw * .6, 'rgba(255,255,230,.2)');
+}
+function xtree(x, by, w, h, s) {
+  const cx = x + w / 2; rect(cx - w * .06, by - h * .14, w * .12, h * .14, '#5D4325');
+  poly(N ? '#0e3b22' : '#1E7A3A', [cx, by - h, cx + w * .32, by - h * .62, cx - w * .32, by - h * .62]);
+  poly(N ? '#0b3320' : '#196B32', [cx, by - h * .78, cx + w * .45, by - h * .34, cx - w * .45, by - h * .34]);
+  poly(N ? '#0a2c1c' : '#145C2B', [cx, by - h * .56, cx + w * .5, by - h * .14, cx - w * .5, by - h * .14]);
+  text('⭐', cx, by - h * 1.02, h * .12, '#F5B83D', 400);
+  const cols = ['#FF3B4E', '#FFD23F', '#4FC3F7', '#ffffff'];
+  for (let i = 0; i < 9; i++) { const t = (i % 3) / 3, row = Math.floor(i / 3), yy = by - h * (.3 + row * .2), xx = cx + (t - .33) * w * (.7 - row * .18); const on = (i + Math.floor(TIME * 4)) % 2; circ(xx, yy, Math.max(1, w * .035), on ? cols[i % 4] : '#333'); if (N && on) glow(xx, yy, w * .12, cols[i % 4] + '77'); }
+}
+function gbox(x, by, w, h, s) {
+  if (s.done) return; const cx = x + w / 2, bob = Math.sin(TIME * 4 + s.seed) * h * .08, y = by - h * .9 + bob;
+  glow(cx, y + h * .4, w * 1.3, 'rgba(255,210,63,.55)');
+  rrect(x, y + h * .25, w, h * .65, w * .08, '#F5B83D'); rrect(x - w * .06, y + h * .12, w * 1.12, h * .2, w * .06, '#FFD23F');
+  rect(cx - w * .08, y + h * .12, w * .16, h * .78, '#D7263D'); rect(x, y + h * .5, w, h * .1, '#D7263D');
+  ell(cx - w * .16, y + h * .08, w * .16, h * .1, '#D7263D'); ell(cx + w * .16, y + h * .08, w * .16, h * .1, '#D7263D');
+  if (w > 26) text('?', cx, y + h * .58, h * .32, '#fff');
+}
+function santa(x, by, w, h) { person(x + w / 2, by, h, { top: '#D7263D', bot: '#D7263D', skin: SKIN[0], head: 'santa', wave: Math.floor(TIME * 2) % 2 === 0 }); }
+function kids(x, by, w, h, s) { for (let i = 0; i < 3; i++) person(x + w * (.2 + i * .3), by, h * (.75 + (i % 2) * .1), s.ppl[i]); if (s.boom > 0) { const bx = x + w * .5, byy = by - h * .2; glow(bx, byy, w * 1.1, 'rgba(255,220,120,.85)'); text('KPAA!', bx, byy - h * .6, h * .35, '#FFD23F'); } }
+const SPAN = { gantry, footbridge, arch, xlights, tollgate };
+const PAINT = { gbox, bld, unfinished, church, mosque, kiosk, lamp, lamp2, palm, tree, bush, billboard, epole, busstop, speedsign, tlight, drum, pothole, leaves, hut, stall, fuelst, canoe, wreck, officer, van, parked, xtree, santa, kids,
   person: (x, by, w, h, s) => person(x + w / 2, by, h, s.p),
   sign: (x, by, w, h, s) => signboard(x, by, w, h, s.bg, s.fg, s.lines) };
 
@@ -398,12 +459,20 @@ const PAINT = { bld, unfinished, church, mosque, kiosk, lamp, lamp2, palm, tree,
 function lightState(j) { const p = (TIME + j.off) % 9; return p < 5 ? 'g' : p < 6 ? 'a' : 'r'; }
 
 // ================= the game =================
+const PREVIEWS = new Set();
 function start(o) {
+  if (o.mode !== 'attract') { PREVIEWS.forEach(el => el.__ndStop && el.__ndStop()); PREVIEWS.clear(); }
   return new Promise((resolve) => {
-    const V = VEH[o.vehicle] || VEH.ride, race = !!o.race;
-    const TR = rng(o.seed || (Math.random() * 1e9)), LR = race ? rng((o.seed || 1) + 7) : rng(Math.random() * 1e9);
-    const hour = (new Date().getUTCHours() + 1) % 24, phase = hour >= 19 || hour < 6 ? 'night' : hour >= 17 ? 'dusk' : 'day';
+    const V = VEH[o.vehicle] || VEH.ride, race = !!o.race, mode = race ? 'race' : (o.mode || 'trip');
+    const attract = mode === 'attract', daily = mode === 'daily', paid = mode === 'trip', seeded = race || daily || attract;
+    const DR = attract ? 90 : DRAW;
+    const G = o.garage || {}, GCOL = (G.colHex || '#E8EDF5');
+    const TR = rng(o.seed || (Math.random() * 1e9)), LR = seeded ? rng((o.seed || 1) + 7) : rng(Math.random() * 1e9);
+    const hour = (new Date(Date.now() + 3600000).getUTCHours()) % 24;
+    const phase = o.phase || (hour >= 19 || hour < 6 ? 'night' : hour >= 17 ? 'dusk' : 'day');
     N = phase === 'night';
+    // December mornings come with harmattan haze: dusty sky, short visibility
+    const haze = !attract && phase === 'day' && (o.haze != null ? o.haze : (hour < 11 || TR.chance(.35)));
     const cityKey = CITYKEY[o.homeCity] || o.homeCity || 'Lagos', city = STREETS[cityKey] || STREETS._;
     const destCity = (DEST[o.to.id] && DEST[o.to.id].city) || o.to.city || o.to.name;
     const km = o.km || (race ? 12 : 20);
@@ -468,7 +537,8 @@ function start(o) {
 
     // ---------- place things ----------
     const S = window.__nd = { stops: [], cps: [], juncs: [], fuels: [], jams: [], hawkers: [], cars: [], fares: 0, friends: 0, checks: 0, fines: 0, crashes: 0, pax: o.vehicle === 'danfo' ? 8 : 0,
-      fuel: 100, t: 0, done: false, paused: true, ind: null, boost: 0, shake: 0, bgX: 0, msgs: {}, board: 0, lastHud: 0, wheelA: 0, steer: 0, brake: false };
+      fuel: 100, t: 0, done: false, paused: true, ind: null, boost: 0, shake: 0, bgX: 0, msgs: {}, board: 0, lastHud: 0, wheelA: 0, steer: 0, brake: false,
+      herds: [], tolls: [], bangs: [], style: 0, combo: 0, comboT: 0, path: [], nextRec: 0, fw: [] };
     const reserved = [];
     const free = (a, b) => !reserved.some(([x, y]) => a < y && b > x);
     const reserve = (a, b) => reserved.push([a, b]);
@@ -496,6 +566,11 @@ function start(o) {
           if (k % 12 === 0) urbanBuilding(i, -1), urbanBuilding(i, 1);
           continue;
         }
+        if (rt.urban && k % 55 === 27) sp(i, 'xlights', 0, 0, 0, { span: true, seed: k, label: k % 165 === 27 ? TR.pick(['MERRY CHRISTMAS', 'HAPPY NEW YEAR', 'DETTY DECEMBER', 'WELCOME HOME IJGB', 'COMPLIMENTS OF THE SEASON']) : null, bg: TR.pick(['#D7263D', '#0F3A2D', '#155C45']) });
+        if (leg.type === 'bridge' && k % 45 === 20) sp(i, 'xlights', 0, 0, 0, { span: true, seed: k });
+        if (rt.urban && TR.chance(.02)) sp(i, 'xtree', sideX(1.3, TR), 700, 1500, {});
+        if (rt.urban && TR.chance(.007)) sp(i, 'santa', sideX(1.24, TR), 300, 680, {});
+        if ((leg.type === 'estate' || leg.type === 'arterial') && TR.chance(.005) && k > 40) { const kd = { t: 'kids', x: 1.22 * (TR.chance(.5) ? -1 : 1), ww: 900, wh: 520, ppl: Array.from({ length: 3 }, () => randPerson(TR)), boom: 0 }; sg.sprites.push(kd); S.bangs.push({ i, s: kd, done: false }); }
         if (rt.urban) {
           if (k % 7 === 0) { urbanBuilding(i, -1); urbanBuilding(i, 1); }
           if (k % 9 === 4) { if (rt.div) sp(i, 'lamp2', -1.09, 1500, 3200, { c: true }); else sp(i, 'lamp', (k % 18 === 4 ? -1 : 1) * 1.14, 800, 3200, { solar: TR.chance(.5) }); }
@@ -562,8 +637,36 @@ function start(o) {
       }
       if (leg.final) { const e = s1 - 70; sp(e, 'arch', 0, 0, 0, { span: true, label: `WELCOME TO ${o.to.name.toUpperCase()}` }); S.endI = e + 6; }
     });
+    // cattle crossing on the highway: herdsmen bring the cows across, brake and wait
+    legs.forEach((leg) => {
+      if (leg.type !== 'highway' || leg.len < 420) return;
+      const [s0] = legRange[leg.i];
+      for (let tries = 0; tries < 20; tries++) {
+        const i = s0 + TR.i(160, leg.len - 140); if (!free(i - 70, i + 12)) continue;
+        sp(i - 60, 'sign', 1.32, 1400, 1500, { bg: '#F2C200', fg: '#121A3A', lines: ['🐄 CATTLE CROSSING', 'SLOW DOWN'] });
+        const n = TR.i(4, 7), cows = Array.from({ length: n }, (_, q) => ({ dz: TR.f(-2.2, 2.2) * SEG, dx: -q * .32 - TR.f(0, .15), col: TR.pick(['#F2EDE4', '#E8DCC8', '#8B5A2B', '#5D4037', '#F5F5F5']), spot: TR.chance(.5) }));
+        S.herds.push({ i, cows, x: -1.7, dir: 1, state: 'wait', hit: false, warned: false }); reserve(i - 70, i + 12); break;
+      }
+    });
+    // golden mystery boxes on the road: drive through them for a surprise
+    if (!race && !attract) {
+      const want = TR.i(2, 3);
+      for (let n = 0, tries = 0; n < want && tries < 60; tries++) {
+        const i = TR.i(Math.round(segs.length * .12), Math.round(segs.length * .88)), sg = segs[i];
+        if (!sg || sg.cross || sg.type === 'park' || !free(i - 4, i + 4)) continue;
+        const lanes = laneXs(RT[sg.type]); sg.sprites.push({ t: 'gbox', x: TR.pick(rt2(sg.type) ? [lanes[1]] : lanes), ww: 380, wh: 380, c: true, hit: 'box', seed: TR.f(0, 6) }); reserve(i - 4, i + 4); n++;
+      }
+    }
+    // toll gate on the Lekki-Ikoyi Link Bridge
+    legs.forEach((leg) => {
+      if (!/Link Bridge/.test(leg.name) || race) return;
+      const [s0] = legRange[leg.i], i = s0 + 70;
+      const spr = { t: 'tollgate', x: 0, ww: 0, wh: 0, span: true, label: 'LEKKI-IKOYI LINK BRIDGE TOLL PLAZA', open: false };
+      segs[i].sprites.push(spr); sp(i - 45, 'sign', 1.32, 1500, 1500, { bg: '#1F4FA8', fg: '#fff', lines: ['TOLL PLAZA 300m', 'STOP · PAY · GO'] });
+      S.tolls.push({ i, spr, done: false, warned: false }); reserve(i - 50, i + 10);
+    });
     // checkpoints
-    if (!race) {
+    if (!race && !attract) {
       const want = TOTAL > 3600 ? 3 : 2, cand = legs.filter(l => CPKINDS[l.type] && l.len > 380);
       for (let n = 0, tries = 0; n < want && tries < 60 && cand.length; tries++) {
         const leg = TR.pick(cand), [s0] = legRange[leg.i], i = s0 + TR.i(130, leg.len - 120);
@@ -587,16 +690,26 @@ function start(o) {
     let trackLen = segs.length * SEG;
 
     // ---------- DOM ----------
-    const ov = document.createElement('div'); ov.className = 'drive'; document.body.appendChild(ov); document.body.style.overflow = 'hidden';
+    const ov = document.createElement('div'); ov.className = 'drive' + (attract ? ' attract' : '');
+    if (attract) o.el.appendChild(ov); else { document.body.appendChild(ov); document.body.style.overflow = 'hidden'; }
+    const fmt = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+    const ghost = o.ghost && Array.isArray(o.ghost.path) && o.ghost.path.length > 3 ? o.ghost : null;
+    const title = race ? '🏁 Race vs your friends' : daily ? `🏆 Drive of the Day · ${V.emoji} ${V.name}` : mode === 'free' ? `${V.emoji} ${V.name} · Free ride, no wahala` : `${V.emoji} ${V.name} · Detty December road trip`;
+    const tips = race ? 'Same road for everybody. Fastest time wins, every crash adds 3 seconds.'
+      : daily ? `Everybody in Nigeria drives this same road today. Your time counts: every crash adds 3s, every fine 5s, every passenger you carry takes 1s off.${ghost ? ` 👻 ${o.ghost.n}'s ghost car is driving with you. Pass am!` : ''}`
+      : 'Keep right. Watch for the turn signs at each junction. Slow down for checkpoints, stop at bus stops to carry people, and refuel at filling stations.';
     const legLine = legs.map(l => `<span>${RT[l.type].icon} ${l.sub ? `${l.sub} (${l.name})` : l.name}</span>`).join('<i>→</i>');
     const friendLine = pk.length ? `<div class="d-friends">${S.stops.filter(s => s.friends.length).map(s => s.friends.map(f => `🙋🏾 <b>${f.n}</b> is waiting at <b>${s.name}</b> bus stop`).join('<br>')).join('<br>')}</div>` : '';
-    ov.innerHTML = `
+    ov.innerHTML = attract ? '<canvas id="dc"></canvas>' : `
       <canvas id="dc"></canvas>
       <div class="d-hud">
         <div class="d-pbar"><i id="dpb"></i><span id="dme">${V.emoji}</span><div id="dghosts"></div></div>
         <div class="d-top"><button class="d-x" aria-label="Quit">✕</button>
           <div class="d-road"><b id="droad"></b><small id="dnext"></small></div>
-          <div class="d-stats"><span class="d-spd"><b id="dspd">0</b><small>km/h</small></span><span class="d-lim" id="dlim">50</span>${race ? '' : '<span id="dfuel">⛽ <b>100</b></span>'}${race ? '' : '<span id="dpax">🧍 <b>0</b></span>'}</div></div>
+          <div class="d-stats"><span class="d-spd"><b id="dspd">0</b><small>km/h</small></span><span class="d-lim" id="dlim">50</span>${race || daily ? '<span id="dtime" class="d-time">⏱ <b>0:00</b></span>' : ''}${race ? '' : '<span id="dfuel">⛽ <b>100</b></span>'}${race ? '' : '<span id="dpax">🧍 <b>0</b></span>'}<button class="d-radio" id="dradio" aria-label="Detty FM radio">📻</button></div></div>
+        <div class="d-fm hidden" id="dfm">📻 Detty FM 99.9 <i></i><i></i><i></i></div>
+        <div class="d-style" id="dstyle"></div>
+        <div class="d-coach hidden" id="dcoach"><b id="dcoacht"></b><span class="d-coach-arrow" id="dcoacha">👇</span></div>
         <div class="d-turn hidden" id="dturn"><button data-ind="L" aria-label="Indicate left">⬅</button><div id="dturnt"></div><button data-ind="R" aria-label="Indicate right">➡</button></div>
         <div class="d-banner hidden" id="dban"></div>
         <div class="d-msg" id="dmsg"></div>
@@ -606,12 +719,14 @@ function start(o) {
       </div>
       <div class="d-dlg hidden" id="ddlg"></div>
       <div class="d-start" id="dstart"><div class="d-card">
-        <small>${race ? '🏁 Race vs your friends' : `${V.emoji} ${V.name} · Detty December road trip`}</small>
+        <small>${title}</small>
         <h2>${race ? o.from : legs[0].sub || legs[0].name} → ${o.to.name}</h2>
         ${legs[0].note ? `<p class="d-note">📍 ${legs[0].note}: <b>${legs[0].name}</b></p>` : ''}
         <div class="d-route">${legLine}</div>${friendLine}
-        <p class="d-tips">${race ? 'Same road for everybody. Fastest time wins, every crash adds 3 seconds.' : 'Keep right. Watch for the turn signs at each junction. Slow down for checkpoints, stop at bus stops to carry people, and refuel at filling stations.'}</p>
+        ${haze ? '<p class="d-note">🌫️ Harmattan haze this morning. Visibility is short, drive gently.</p>' : ''}
+        <p class="d-tips">${tips}</p>
         <div class="d-ctlpick"><button data-c="wheel" class="on"><span>🎡</span>Wheel</button><button data-c="tilt"><span>📱</span>Tilt</button><button data-c="tap"><span>👆</span>Buttons</button></div>
+        ${G.plate ? `<p class="d-plate"><span>${esc2(G.plate)}</span> your plate · change it in the Garage</p>` : ''}
         ${V.gear && !race ? `<label class="d-gear"><input type="checkbox" id="dgear"> ${V.gear === 'helmet' ? '⛑️ Wear helmet' : '🔒 Fasten seat belt'} <small>(Road Safety dey check o)</small></label>` : ''}
         <button class="btn btn-gold" id="dgo">🔑 Start engine</button>
         <small class="d-rothint">📱↻ Best played with your phone turned sideways</small></div></div>
@@ -619,22 +734,25 @@ function start(o) {
     const $ = (s) => ov.querySelector(s);
     const cv = $('#dc'), ctx = cv.getContext('2d');
     let W = 0, H = 0, F = 0, HY = 0, DPR = Math.min(1.75, devicePixelRatio || 1), skyG = null;
+    if (attract) DPR = Math.min(1.25, DPR);
     const size = () => {
-      W = innerWidth; H = innerHeight; cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.width = W + 'px'; cv.style.height = H + 'px'; ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      W = attract ? o.el.clientWidth : innerWidth; H = attract ? o.el.clientHeight : innerHeight; cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.width = W + 'px'; cv.style.height = H + 'px'; ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
       const portrait = H > W; F = Math.min(H / 2, W * .62); HY = portrait ? H * .4 : H * .5;
       skyG = ctx.createLinearGradient(0, 0, 0, HY);
-      const sky = phase === 'night' ? ['#050A22', '#1A2456'] : phase === 'dusk' ? ['#2B2D6E', '#F08A4B'] : ['#4FA9E8', '#CFEBFA'];
+      const sky = phase === 'night' ? ['#050A22', '#1A2456'] : phase === 'dusk' ? ['#2B2D6E', '#F08A4B'] : haze ? ['#C9B48A', '#E8D9B8'] : ['#4FA9E8', '#CFEBFA'];
       skyG.addColorStop(0, sky[0]); skyG.addColorStop(1, sky[1]);
-      if (!$('#drot').classList.contains('hidden') && W > H) rotDone();
+      if (!attract && !$('#drot').classList.contains('hidden') && W > H) rotDone();
     };
     size(); addEventListener('resize', size);
-    const msg = (t, ms = 1900) => { const el = $('#dmsg'); el.textContent = t; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); clearTimeout(msg.t); msg.t = setTimeout(() => el.classList.remove('show'), ms); };
-    const banner = (t, ms = 2200) => { const el = $('#dban'); el.textContent = t; el.classList.remove('hidden', 'in'); void el.offsetWidth; el.classList.add('in'); clearTimeout(banner.t); banner.t = setTimeout(() => el.classList.add('hidden'), ms); };
+    const msg = (t, ms = 1900) => { if (attract) return; const el = $('#dmsg'); el.textContent = t; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); clearTimeout(msg.t); msg.t = setTimeout(() => el.classList.remove('show'), ms); };
+    const banner = (t, ms = 2200) => { if (attract) return; const el = $('#dban'); el.textContent = t; el.classList.remove('hidden', 'in'); void el.offsetWidth; el.classList.add('in'); clearTimeout(banner.t); banner.t = setTimeout(() => el.classList.add('hidden'), ms); };
     const once = (key, fn) => { if (S.msgs[key]) return; S.msgs[key] = 1; fn(); };
     const vib = (p) => { try { navigator.vibrate && navigator.vibrate(p); } catch {} };
     let actx = null;
     const tone = (freqs, dur = .12, type = 'square', vol = .05) => { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); freqs.forEach((f, i) => { const os = actx.createOscillator(), g = actx.createGain(); os.type = type; os.frequency.value = f; g.gain.value = vol; os.connect(g).connect(actx.destination); os.start(actx.currentTime + i * (dur + .04)); os.stop(actx.currentTime + i * (dur + .04) + dur); }); } catch {} };
-    const horn = () => tone([415, 415], .14);
+    const noise = (dur = .25, vol = .25, hp = 300) => { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); const b = actx.createBuffer(1, actx.sampleRate * dur, actx.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3); const src = actx.createBufferSource(), g = actx.createGain(), f = actx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp; src.buffer = b; g.gain.value = vol; src.connect(f).connect(g).connect(actx.destination); src.start(); } catch {} };
+    const HORNS = { pam: () => tone([415, 415], .14), danfo: () => tone([392, 392, 392], .09), trumpet: () => tone([196, 147], .32, 'sawtooth', .05), jingle: () => tone([659, 659, 659, 0, 659, 659, 659, 0, 659, 784, 523, 587, 659], .1, 'triangle', .07) };
+    const horn = () => (HORNS[G.horn] || HORNS.pam)();
     const siren = () => tone([880, 660, 880, 660], .16, 'sawtooth', .035);
 
     // shared colour table for this trip
@@ -652,7 +770,7 @@ function start(o) {
     const keys = {};
     const kd = (e) => { keys[e.key] = true; if (e.key === 'h' || e.key === 'H') { horn(); hornPush(); } if (e.key === 'q' || e.key === ',') setInd('L'); if (e.key === 'e' || e.key === '.') setInd('R'); if (e.key === ' ') e.preventDefault(); };
     const ku = (e) => { keys[e.key] = false; };
-    addEventListener('keydown', kd); addEventListener('keyup', ku);
+    if (!attract) { addEventListener('keydown', kd); addEventListener('keyup', ku); }
     function onTilt(e) {
       if (e.gamma == null) return; tiltSeen = true;
       const ang = (screen.orientation && screen.orientation.angle) ?? window.orientation ?? 0;
@@ -680,7 +798,7 @@ function start(o) {
       const br = $('#dbrake');
       br.onpointerdown = (e) => { br.setPointerCapture(e.pointerId); S.brake = true; br.classList.add('on'); };
       br.onpointerup = br.onpointercancel = () => { S.brake = false; br.classList.remove('on'); };
-      $('#dhorn').onclick = () => { horn(); hornPush(); };
+      $('#dhorn').onclick = () => { horn(); hornPush(); S.honked = true; };
     }
     function setInd(d) { S.ind = S.ind === d ? null : d; ov.querySelectorAll('[data-ind]').forEach(b => b.classList.toggle('on', b.dataset.ind === S.ind)); if (S.ind) tone([1200], .03, 'square', .02); }
     ov.querySelectorAll('[data-ind]').forEach(b => b.onclick = () => setInd(b.dataset.ind));
@@ -698,12 +816,13 @@ function start(o) {
       if (race) return msg('No time to buy, you are racing! 🏁');
       const [em, name, cost] = ITEMS[hk.item];
       try { const r = await o.api('/api/trip/buy', { item: hk.item }); o.onCoins(r.coins); hk.sold = true; o.beep('ok');
-        if (hk.item === 'gala') { S.boost = 5; msg(`${em} ${name}! Turbo when the road frees 🚀`); } else { const add = hk.item === 'bread' ? 25 : hk.item === 'chips' ? 15 : 8; S.fuel = Math.min(100, S.fuel + add); msg(`${em} ${name} for ${cost} 🪙 · energy +${add} ⛽`); }
+        if (ITEMS[hk.item][3]) { msg(`${em} ${name} for ${cost} 🪙 · it's in your gift bag. Send am from the Market 🎁`, 2600); }
+        else if (hk.item === 'gala') { S.boost = 5; msg(`${em} ${name}! Turbo when the road frees 🚀`); } else { const add = hk.item === 'bread' ? 25 : hk.item === 'chips' ? 15 : 8; S.fuel = Math.min(100, S.fuel + add); msg(`${em} ${name} for ${cost} 🪙 · energy +${add} ⛽`); }
       } catch (err) { o.toast(err.message); }
     });
-    $('#dfill').onclick = async () => { try { const r = await o.api('/api/trip/buy', { item: 'fuel' }); o.onCoins(r.coins); S.fuel = 60; $('#dfill').classList.add('hidden'); msg('Jerrycan fuel ⛽ Oya go!'); o.beep('ok'); } catch (err) { o.toast(err.message); } };
-    $('.d-x').onclick = () => { S.paused = true; if (confirm('Leave the road? You will skip to arriving without bonus coins.')) finish(true); else S.paused = false; };
-    const onVis = () => { if (document.hidden && !S.done && S.started) S.paused = true; else if (!document.hidden && S.started && !S.done && $('#ddlg').classList.contains('hidden')) S.paused = false; };
+    if (!attract) $('#dfill').onclick = async () => { if (!paid) { S.fuel = 60; $('#dfill').classList.add('hidden'); msg('Jerrycan fuel ⛽ Oya go!'); return; } try { const r = await o.api('/api/trip/buy', { item: 'fuel' }); o.onCoins(r.coins); S.fuel = 60; $('#dfill').classList.add('hidden'); msg('Jerrycan fuel ⛽ Oya go!'); o.beep('ok'); } catch (err) { o.toast(err.message); } };
+    if (!attract) $('.d-x').onclick = () => { S.paused = true; if (confirm('Leave the road? You will skip to arriving without bonus coins.')) finish(true); else S.paused = false; };
+    const onVis = () => { if (attract) return; if (document.hidden && !S.done && S.started) S.paused = true; else if (!document.hidden && S.started && !S.done && $('#ddlg').classList.contains('hidden')) S.paused = false; };
     document.addEventListener('visibilitychange', onVis);
 
     // landscape + fullscreen
@@ -715,8 +834,9 @@ function start(o) {
     }
     let rotWait = null;
     function rotDone() { $('#drot').classList.add('hidden'); if (rotWait) { const f2 = rotWait; rotWait = null; f2(); } }
-    $('#drotskip').onclick = rotDone;
-    $('#dgo').onclick = async () => {
+    if (!attract) $('#drotskip').onclick = rotDone;
+    if (!attract) $('#dradio').onclick = () => radio.toggle();
+    if (!attract) $('#dgo').onclick = async () => {
       if (control === 'tilt' && typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) { try { await DeviceOrientationEvent.requestPermission(); } catch {} }
       S.gear = !!($('#dgear') && $('#dgear').checked) || !V.gear;
       await goLandscape();
@@ -727,8 +847,50 @@ function start(o) {
       if (legs[0].type === 'park') msg(`Conductor: "${destCity}! ${destCity}! Enter with your change o!" 🗣️`, 3000);
       else if (legs[0].note) msg(`📍 ${legs[0].note}`, 2400);
       let n = 3; banner('3'); o.beep('tick');
-      const cd = setInterval(() => { n--; if (n > 0) { banner(String(n)); o.beep('tick'); } else { clearInterval(cd); banner('GO! 🚦'); o.beep('win'); S.paused = false; S.started = true; } }, 800);
+      const cd = setInterval(() => { n--; if (n > 0) { banner(String(n)); o.beep('tick'); } else { clearInterval(cd); banner('GO! 🚦'); o.beep('win'); S.paused = false; S.started = true; radio.autostart(); if (o.coach) coach.start(); } }, 800);
     };
+
+    // ---------- Detty FM: a little afrobeats groove made live with WebAudio (no music files) ----------
+    const radio = (() => {
+      let on = false, timer = null, step = 0, nextT = 0, master = null, djT = 0, used = [];
+      const BPM = 108, SPB = 60 / BPM / 4;
+      const CH = [[220, 261.6, 329.6], [174.6, 220, 261.6], [261.6, 329.6, 392], [196, 246.9, 293.7]];
+      const ctx2 = () => { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (!master) { master = actx.createGain(); master.gain.value = .5; master.connect(actx.destination); } return actx; };
+      function osc(type, f, t, d, v, glide) { const a = ctx2(), os = a.createOscillator(), g = a.createGain(); os.type = type; os.frequency.setValueAtTime(f, t); if (glide) os.frequency.exponentialRampToValueAtTime(glide, t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d); os.connect(g).connect(master); os.start(t); os.stop(t + d + .02); }
+      function hit(t, d, v, hp) { const a = ctx2(), b = a.createBuffer(1, Math.ceil(a.sampleRate * d), a.sampleRate), x = b.getChannelData(0); for (let i = 0; i < x.length; i++) x[i] = Math.random() * 2 - 1; const sN = a.createBufferSource(), g = a.createGain(), f = a.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp; sN.buffer = b; g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d); sN.connect(f).connect(g).connect(master); sN.start(t); }
+      function play(st, t) {
+        const bar = Math.floor(st / 16) % 4, k = st % 16, ch = CH[bar];
+        if ([0, 6, 8, 14].includes(k)) osc('sine', 120, t, .22, .5, 45);                    // kick
+        if (k === 4 || k === 12) hit(t, .12, .22, 1500);                                    // clap
+        if (k % 2 === 0) hit(t, .04, k % 4 === 2 ? .09 : .05, 6000);                         // shaker
+        if ([3, 7, 10, 11].includes(k)) osc('sine', ch[0] / 2, t, .3, .32, ch[0] / 2.6);     // log drum
+        if (k === 0 || k === 10) osc('triangle', ch[0] / 4, t, .35, .25);                    // bass
+        if (k === 0) ch.forEach(f => osc('triangle', f, t, SPB * 14, .025));                 // pad
+        if ([2, 5, 9, 13].includes(k) && (st >> 4) % 2) osc('square', ch[(k >> 2) % 3] * 2, t, .08, .02);  // guitar pluck
+      }
+      function tick() { const a = ctx2(); while (nextT < a.currentTime + .12) { if (!S.paused) play(step, nextT); step++; nextT += SPB; }
+        if (!S.paused && S.t - djT > 32) { djT = S.t; let line; do { line = RADIO[Math.floor(Math.random() * RADIO.length)]; } while (used.includes(line) && used.length < RADIO.length); used.push(line); if (used.length > 5) used.shift(); msg(line, 3600); } }
+      function start() { try { const a = ctx2(); if (a.state === 'suspended') a.resume(); nextT = a.currentTime + .05; djT = S.t - 26; timer = setInterval(tick, 30); on = true; $('#dfm').classList.remove('hidden'); $('#dradio').classList.add('on'); } catch {} }
+      function stop() { clearInterval(timer); timer = null; on = false; const f = $('#dfm'); if (f) f.classList.add('hidden'); const b = $('#dradio'); if (b) b.classList.remove('on'); }
+      return {
+        toggle() { if (on) stop(); else start(); try { localStorage.setItem('n25_radio', on ? '1' : '0'); } catch {} o.beep('tap'); },
+        autostart() { let pref = null; try { pref = localStorage.getItem('n25_radio'); } catch {} if (o.sound !== false && pref !== '0' && !race) start(); },
+        stop,
+      };
+    })();
+
+    // ---------- first-drive coach: one tip at a time, each disappears when you do it ----------
+    const coach = (() => {
+      const steps = [
+        { t: () => control === 'wheel' ? '👉 Drag the wheel to steer' : control === 'tilt' ? '📱 Tilt your phone to steer' : '👉 Hold ◀ ▶ to steer', at: 'left', done: () => Math.abs(S.steer) > .35 },
+        { t: () => '🛑 Hold BRAKE to slow down', at: 'right', done: () => S.brake || keys.ArrowDown || keys[' '] },
+        { t: () => '📯 Tap the horn: slow cars go comot from your lane', at: 'horn', done: () => S.honked, max: 7 },
+        { t: () => '⬅ ➡ At a junction, tap the arrow, or keep left or right', at: 'top', done: () => false, max: 5 },
+      ];
+      let i = -1, since = 0;
+      function show() { const st = steps[i], el = $('#dcoach'); if (!st) { el.classList.add('hidden'); try { localStorage.setItem('n25_coached', '1'); } catch {} return; } $('#dcoacht').textContent = st.t(); el.className = 'd-coach at-' + st.at; since = S.t; }
+      return { start() { i = 0; show(); }, tick() { if (i < 0 || i >= steps.length) return; const st = steps[i]; if ((S.t - since > .6 && st.done()) || (st.max && S.t - since > st.max)) { o.beep('ok'); i++; show(); } } };
+    })();
 
     // ---------- traffic ----------
     let carId = 0;
@@ -754,8 +916,8 @@ function start(o) {
       const pz = S.z + PZ, psg = segAt(pz), prt = RT[psg.type];
       // spawn
       const want = DENSITY[psg.type], live = S.cars.filter(k => !k.far && !k.jam).length;
-      if (live < want && LR.chance(dt * 6)) { const z = pz + LR.f(DRAW * .55, DRAW * .95) * SEG; if (!S.jams.some(j => j.state !== 'over' && z > (j.a - 5) * SEG && z < (j.b + 5) * SEG)) spawnCar(z); }
-      if (prt.div && S.cars.filter(k => k.far).length < 6 && LR.chance(dt * 3)) spawnCar(pz + LR.f(DRAW * .5, DRAW * .95) * SEG, { far: true });
+      if (live < want && LR.chance(dt * 6)) { const z = pz + LR.f(DR * .55, DR * .95) * SEG; if (!S.jams.some(j => j.state !== 'over' && z > (j.a - 5) * SEG && z < (j.b + 5) * SEG)) spawnCar(z); }
+      if (prt.div && S.cars.filter(k => k.far).length < 6 && LR.chance(dt * 3)) spawnCar(pz + LR.f(DR * .5, DR * .95) * SEG, { far: true });
       for (const k of S.cars) {
         const sg = segAt(k.z), rt = RT[sg.type];
         let tgt = rt.lim * k.base;
@@ -773,12 +935,12 @@ function start(o) {
         k.z += k.dir * k.s * U * dt;
         k.x += (k.tx - k.x) * Math.min(1, dt * 1.6);
       }
-      S.cars = S.cars.filter(k => !k.gone && k.z > S.z - 4 * SEG && k.z < S.z + (DRAW + 30) * SEG && k.z < trackLen - SEG);
+      S.cars = S.cars.filter(k => !k.gone && k.z > S.z - 4 * SEG && k.z < S.z + (DR + 30) * SEG && k.z < trackLen - SEG);
     }
     function updateJams(dt) {
       const pi = Math.floor((S.z + PZ) / SEG);
       for (const j of S.jams) {
-        if (j.state === 'idle' && j.a - pi < DRAW * .9) {
+        if (j.state === 'idle' && j.a - pi < DR * .9) {
           j.state = 'queued';
           S.cars = S.cars.filter(k => k.far || k.z < (j.a - 6) * SEG || k.z > (j.b + 6) * SEG);
           const rt = RT[segs[j.a].type];
@@ -788,7 +950,8 @@ function start(o) {
         if (j.state === 'queued' && j.a - pi < 18) {
           j.state = 'active'; j.t = LR.f(9, 12); msg('Hold-up! Hawkers dey come… tap them to buy 🛒', 2600);
           const rt = RT[segs[j.a].type], bounds = Array.from({ length: rt.lanes - 1 }, (_, i) => -1 + 2 * (i + 1) / rt.lanes);
-          Object.keys(ITEMS).forEach((it, i) => S.hawkers.push({ z: (pi + 5 + i * 3) * SEG, x: bounds[i % bounds.length] || .9, item: it, sold: false, bob: LR.f(0, 6) }));
+          const pickN = LR.shuffle(['water', 'gala', 'chips', 'bread', 'chinchin', 'puff']).slice(0, 4).concat(LR.shuffle(['tree', 'chicken', 'hamper']).slice(0, 2));
+          pickN.forEach((it, i) => S.hawkers.push({ z: (pi + 5 + i * 3) * SEG, x: bounds[i % bounds.length] || .9, item: it, sold: false, bob: LR.f(0, 6) }));
         }
         if (j.state === 'active') { j.t -= dt; if (j.t <= 0) { j.state = 'over'; banner('Road don free! 🚗💨'); S.hawkers.forEach(h => h.leaving = true); } }
       }
@@ -807,7 +970,7 @@ function start(o) {
     }
     async function fine(kind, why) {
       siren(); vib([80, 50, 80]); S.fines++;
-      if (race) return msg(`🚨 ${why}`, 2400);
+      if (!paid) return msg(`🚨 ${why}${daily ? ' +5s penalty' : ''}`, 2400);
       try { const r = await o.api('/api/trip/fine', { kind }); o.onCoins(r.coins); msg(`🚨 ${why}${r.fined ? ` Fine −${r.fined} 🪙` : ''}`, 2800); } catch { msg(`🚨 ${why}`, 2400); }
     }
     async function checkpoint(cp) {
@@ -836,12 +999,21 @@ function start(o) {
       }
       if (o.vehicle === 'danfo' && S.pax > 2 && LR.chance(.7)) { const off = LR.i(1, Math.min(3, S.pax - S.friends)); S.pax -= off; msg(`"O wa o!" 🗣️ ${off} passenger${off > 1 ? 's' : ''} dropped`, 1600); }
       const room = V.cap - S.pax;
-      if (room > 0 && st.n > 0) { n = Math.min(room, st.n); st.n -= n; S.pax += n; S.fares += n; setTimeout(() => msg(o.vehicle === 'danfo' ? `Conductor: "Owo da?" 💰 ${n} passenger${n > 1 ? 's' : ''} paid` : `🧍 ${n} passenger${n > 1 ? 's' : ''} entered · fare collected`, 2000), st.friends.length ? 2700 : 0); o.beep('ok'); }
+      if (room > 0 && st.n > 0 && LR.chance(.22)) { n = 1; st.n -= 1; S.pax += 1; S.fares += 2; setTimeout(() => msg(LR.pick(IJGB), 2600), st.friends.length ? 2700 : 0); o.beep('win'); }
+      else if (room > 0 && st.n > 0) { n = Math.min(room, st.n); st.n -= n; S.pax += n; S.fares += n; setTimeout(() => msg(o.vehicle === 'danfo' ? `Conductor: "Owo da?" 💰 ${n} passenger${n > 1 ? 's' : ''} paid` : `🧍 ${n} passenger${n > 1 ? 's' : ''} entered · fare collected`, 2000), st.friends.length ? 2700 : 0); o.beep('ok'); }
       else if (!st.friends.length) msg(room <= 0 ? 'Motor don full! 🚐' : 'Nobody dey this stop', 1500);
+    }
+    async function agbero() {
+      S.agbero = true;
+      const r = await dialog('🧔🏾‍♂️', 'Agbero at the park', '"Driver! Drop owo union! Na Christmas, the boys must chop."', ['💰 Pay 10 🪙', '🗣️ "I don pay this morning!"']);
+      if (r === 0) { try { const x = await o.api('/api/trip/buy', { item: 'union' }); o.onCoins(x.coins); } catch {} msg('Agbero: "Correct driver! Merry Christmas 🙏🏾"', 2200); o.beep('ok'); }
+      else if (LR.chance(.55)) msg('Agbero: "Oya go, but tomorrow you go pay double!" 😂', 2400);
+      else { msg('Agbero don stand for your front! 😤 You wasted time arguing', 2400); S.s = 0; S.t += 4; o.beep('no'); }
     }
     async function refuel(fs) {
       fs.done = true;
       if (S.fuel > 90) return msg('Tank still full ⛽', 1400);
+      if (!paid) { S.fuel = 100; $('#dfill').classList.add('hidden'); msg('⛽ Attendant: "Oga, I don fill am!" Tank full', 2400); o.beep('ok'); return; }
       try { const r = await o.api('/api/trip/buy', { item: 'fuel' }); o.onCoins(r.coins); S.fuel = 100; $('#dfill').classList.add('hidden'); msg('⛽ Attendant: "Oga, I don fill am!" Tank full', 2400); o.beep('ok'); } catch (err) { msg(err.message); }
     }
     function wrongTurn(j, ch) {
@@ -872,14 +1044,24 @@ function start(o) {
 
     // ---------- main update ----------
     S.z = 0; S.x = legs[0].type === 'park' ? 0 : RT[legs[0].type].two ? .5 : .33; S.s = 0;
-    for (let q = 0; q < 10; q++) spawnCar(PZ + LR.f(15, DRAW * .9) * SEG);
-    let last = performance.now(), raf;
+    for (let q = 0; q < 10; q++) spawnCar(PZ + LR.f(15, DR * .9) * SEG);
+    let last = performance.now(), raf, visible = true, io = null;
     function loop(now) {
+      raf = requestAnimationFrame(loop);
+      if (attract && !o.el.isConnected) { o.el.__ndStop && o.el.__ndStop(); PREVIEWS.delete(o.el); return; }
+      if (attract && (!visible || document.hidden || now - last < 32)) { if (!visible || document.hidden) last = now; return; }
       const dt = Math.min(.05, (now - last) / 1000); last = now; TIME = now / 1000;
       if (!S.paused && !S.done) update(dt);
-      render(); raf = requestAnimationFrame(loop);
+      render();
     }
     raf = requestAnimationFrame(loop);
+    if (attract) {
+      S.paused = false; S.started = true; S.inv = 1e9; S.jams = []; S.s = 40;
+      S.juncs.forEach(j => { j.done = true; });
+      if ('IntersectionObserver' in window) { io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; }); io.observe(o.el); }
+      PREVIEWS.add(o.el);
+      o.el.__ndStop = () => { o.el.__ndStop = null; S.done = true; cancelAnimationFrame(raf); if (io) io.disconnect(); removeEventListener('resize', size); ov.remove(); };
+    }
 
     function update(dt) {
       S.t += dt;
@@ -887,6 +1069,17 @@ function start(o) {
       // steering
       let input = control === 'wheel' ? S.wheelA / 100 : control === 'tilt' && tiltV != null ? tiltV : (S.tap || 0);
       if (keys.ArrowLeft || keys.a) input = -1; if (keys.ArrowRight || keys.d) input = 1;
+      if (attract) {
+        // autopilot: hold a lane, change lanes around slow cars, brake if boxed in
+        const lanes = laneXs(rt), cur = lanes.reduce((a, b) => Math.abs(b - S.x) < Math.abs(a - S.x) ? b : a);
+        const ahead = (x) => S.cars.filter(k => k.dir > 0 && !k.far && Math.abs(k.x - x) < .3 && k.z > pz && k.z - pz < 1800).sort((a, b) => a.z - b.z)[0];
+        if (S.apLane == null || S.apT <= 0) { S.apLane = rt.two ? lanes[1] : cur; S.apT = 1; }
+        S.apT -= dt;
+        const a1 = ahead(S.apLane);
+        if (a1 && a1.s < S.s) { const alt = lanes.filter(x => Math.abs(x - S.apLane) > .2 && !ahead(x) && !(rt.two && x < 0)); if (alt.length) { S.apLane = alt[0]; S.apT = 2.5; } }
+        input = clamp((S.apLane - S.x) * 4 + sg.curve * Math.pow(S.s / 100, 2) * .35 * 3, -1, 1);
+        S.brake = !!(a1 && a1.z - pz < 900 && a1.s < S.s - 2 && Math.abs(a1.x - S.x) < .3);
+      }
       if (control === 'wheel' && !S.wheelDrag && S.wheelA) S.wheelA *= Math.pow(.02, dt);
       const whEl = $('#dwheel svg'); if (whEl) whEl.style.transform = `rotate(${S.wheelA}deg)`;
       S.steer += (clamp(input, -1, 1) - S.steer) * Math.min(1, dt * 8);
@@ -913,9 +1106,11 @@ function start(o) {
       const npz = S.z + PZ, ni = Math.floor(npz / SEG);
       S.bgX += sg.curve * S.s * dt * .002;
       // fuel
-      if (!race) { S.fuel = Math.max(0, S.fuel - S.s * U * dt / SEG * (100 / (TOTAL * .95)) * V.fuel); if (S.fuel <= 0) once('nofuel' + Math.floor(S.t / 30), () => { msg('Fuel don finish! ⛽ Find filling station or buy jerrycan', 2800); $('#dfill').classList.remove('hidden'); o.beep('no'); }); if (S.fuel < 20 && S.fuel > 0) once('lowfuel', () => msg('Fuel low o! ⛽ Stop at the next filling station', 2400)); }
+      if (!race && !attract) { S.fuel = Math.max(0, S.fuel - S.s * U * dt / SEG * (100 / (TOTAL * .95)) * V.fuel); if (S.fuel <= 0) once('nofuel' + Math.floor(S.t / 30), () => { msg('Fuel don finish! ⛽ Find filling station or buy jerrycan', 2800); $('#dfill').classList.remove('hidden'); o.beep('no'); }); if (S.fuel < 20 && S.fuel > 0) once('lowfuel', () => msg('Fuel low o! ⛽ Stop at the next filling station', 2400)); }
       if (S.shake > 0) S.shake -= dt; if (S.inv > 0) S.inv -= dt;
       updateCars(dt); updateJams(dt);
+      if (attract) { if (ni >= S.endI - 10) { S.z = 0; S.cars = []; for (let q = 0; q < 8; q++) spawnCar(PZ + LR.f(15, DR * .9) * SEG); } updateHerds(dt, ni); return; }
+      updateHerds(dt, ni); updateSpecial(dt, ni, npz);
       S.jamNear = S.jams.some(j => j.state === 'active' && ni > j.a - 5 && ni < j.b + 5);
       // collisions with traffic
       if (!(S.inv > 0)) for (const k of S.cars) {
@@ -928,6 +1123,7 @@ function start(o) {
       // collisions with road objects
       for (const q of [segs[ni], segs[ni + 1]]) if (q) for (const s of q.sprites) if (s.hit && !s.done && Math.abs(s.x - S.x) < ((s.ww + V.w) / 2 / q.w) * .8) {
         s.done = true;
+        if (s.hit === 'box') { getBox(); continue; }
         if (s.hit === 'hole') { S.s *= .55; S.shake = .4; msg(LR.pick(['Pothole! 🕳️ Naija roads 😩', 'Ah! Pothole don shake your engine 😩', 'Who dig this hole?! 🕳️']), 1500); o.beep('no'); vib(80); }
         else { s.down = true; crash(s.t === 'wreck' ? 'You jam the broken-down truck! 😱 See the leaves na, na warning' : 'You knock the drum! 😬'); }
       }
@@ -964,19 +1160,64 @@ function start(o) {
       // filling stations
       for (const fs of S.fuels) { if (fs.done) continue; const dist = fs.i - ni; if (dist < -3) { fs.done = true; continue; } if (dist <= 7 && S.s < 7 && S.x > .3) refuel(fs); break; }
       // HUD
+      if (o.coach) coach.tick();
+      if (S.t >= S.nextRec) { S.nextRec += .5; S.path.push(Math.round(clamp(ni / S.endI, 0, 1) * 1000) / 1000, Math.round(S.x * 100) / 100); }
       if (S.t - S.lastHud > .12) hud(ni, rt);
       if (race && S.t - (S.lastRep || 0) > .8) { S.lastRep = S.t; o.race.report(Math.min(1, ni / S.endI), S.crashes).then(v => { if (!v || !v.players) return; $('#dghosts').innerHTML = v.players.filter(p => !p.me).map(p => `<span class="dghost" style="left:${Math.min(100, p.progress * 100)}%">${p.done ? '🏁' : '🚘'}<em>${p.n.slice(0, 8)}</em></span>`).join(''); }).catch(() => {}); }
       if (ni >= S.endI) finish(false);
     }
-    function crash(t, big) { if (S.inv > 0) return; S.crashes++; S.shake = .6; S.inv = 1.2; S.s *= big ? 0 : .25; msg(t, 2000); o.beep('no'); vib([60, 40, 60]); }
+    function updateHerds(dt, ni) {
+      for (const hd of S.herds) {
+        const dist = hd.i - ni;
+        if (hd.state === 'wait' && dist < 75) { hd.state = 'cross'; if (!hd.warned) { hd.warned = true; banner('🐄 COWS CROSSING! BRAKE'); o.beep('no'); } }
+        if (hd.state === 'cross') { hd.x += hd.dir * dt * .32; if (hd.x > 2.6) hd.state = 'gone'; }
+        if (hd.state !== 'cross' || hd.hit || S.inv > 0) continue;
+        for (const cw of hd.cows) { const cz = hd.i * SEG + cw.dz, cx = hd.x + cw.dx; if (Math.abs(cx - S.x) < .26 && Math.abs(cz - (S.z + PZ)) < 260) { hd.hit = true; crash('You jam cow! 🐄 Herdsman don vex. Wait for them next time', true); break; } }
+        if (!hd.passedMsg && dist < 0 && !hd.hit) { hd.passedMsg = true; msg('You waited for the cows 🐄 Patient driver 👍🏾', 1800); S.style += 10; }
+      }
+    }
+    function updateSpecial(dt, ni, npz) {
+      // toll gate: stop at the barrier, pay, go
+      for (const tg of S.tolls) {
+        if (tg.done) continue;
+        const dist = tg.i - ni;
+        if (dist < 60 && !tg.warned) { tg.warned = true; banner('🚧 TOLL PLAZA: STOP AND PAY'); }
+        if (dist <= 12 && dist > 0 && S.s < 8 && !tg.spr.open && !tg.paying) {
+          tg.paying = true;
+          (async () => { if (paid) { try { const r = await o.api('/api/trip/buy', { item: 'toll' }); o.onCoins(r.coins); } catch {} } tg.spr.open = true; o.beep('ok'); msg(paid ? 'Toll paid · 10 🪙 · Barrier up ⬆️' : 'Toll paid · Barrier up ⬆️', 1800); })();
+        }
+        if (dist <= 1) { tg.done = true; if (!tg.spr.open) { tg.spr.open = true; crash('You jam the toll barrier! 😱 Na stop and pay o'); } }
+        break;
+      }
+      // knock-out bangers: small pikin dey play for December
+      for (const bg of S.bangs) { if (bg.done) continue; const dist = bg.i - ni; if (dist < 0) { bg.done = true; continue; } if (dist < 22) { bg.done = true; bg.s.boom = .6; noise(.35, .35, 200); S.shake = Math.max(S.shake, .25); vib(40); once('bang', () => msg('KPAA! 💥 Na knock-out. Small pikin dey play banger 😂', 2200)); } }
+      S.bangs.forEach(bg => { if (bg.s.boom > 0) bg.s.boom -= dt; });
+      // style: clean overtakes chain into a combo
+      for (const k of S.cars) {
+        if (k.far || k.dir < 0 || k.passed) continue;
+        if (k.z < npz - 120 && k.z > npz - 900) { k.passed = true; if (S.s > 25 && S.s > k.s + 8 && !(S.inv > 0)) { const gap = Math.abs(k.x - S.x); S.combo = S.t - S.comboT < 5 ? S.combo + 1 : 1; S.comboT = S.t; const pts = (gap < .45 ? 10 : 5) * Math.min(S.combo, 5); S.style += pts; styleMsg(`${gap < .45 ? 'Close one!' : 'Overtake'} +${pts}${S.combo > 1 ? ` 🔥x${S.combo}` : ''}`); } }
+      }
+      if (S.combo && S.t - S.comboT > 5) S.combo = 0;
+      // the motor park agbero wants his union money
+      if (!S.agbero && !race && legs[0].type === 'park' && S.t > 5 && segs[ni].leg === 0) agbero();
+    }
+    function ghostAt(t) { const p = ghost.path, n = p.length / 2, q = clamp(t / .5, 0, n - 1), a = Math.floor(q), b = Math.min(n - 1, a + 1), f = q - a; return { f: lerp(p[a * 2], p[b * 2], f), x: lerp(p[a * 2 + 1], p[b * 2 + 1], f), end: q >= n - 1 }; }
+    async function getBox() {
+      tone([784, 988, 1175, 1568], .07, 'triangle', .07); vib([20, 30, 20]); styleMsg('🎁 Mystery box!');
+      try { const r = await o.api('/api/drive/box', {}); if (r.coins != null) o.onCoins(r.coins); msg(r.label, 2200); if (r.n >= 100) { banner('🤑 JACKPOT BOX!'); tone([523, 659, 784, 1047, 1319], .09, 'triangle', .08); } S.boxes = (S.boxes || 0) + 1; } catch { msg('🎁 Mystery box! (no network, try again later)', 1800); }
+    }
+    function styleMsg(t) { const el = $('#dstyle'); if (!el) return; el.textContent = t; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); }
+    function crash(t, big) { if (S.inv > 0) return; S.crashes++; S.combo = 0; S.shake = .6; S.inv = 1.2; S.s *= big ? 0 : .25; msg(t, 2000); o.beep('no'); vib([60, 40, 60]); }
     function hud(ni, rt) {
       S.lastHud = S.t;
       const leg = legs[segs[ni].leg];
       $('#droad').textContent = `${RT[leg.type].icon} ${leg.name}`;
       $('#dspd').textContent = Math.round(S.s);
       const lim = $('#dlim'); lim.textContent = rt.lim; lim.classList.toggle('over', S.s > rt.lim + 5);
+      if (race || daily) $('#dtime b').textContent = fmt(S.t);
       if (!race) { $('#dfuel b').textContent = Math.round(S.fuel); $('#dfuel').classList.toggle('low', S.fuel < 20); $('#dpax b').textContent = `${S.pax}/${V.cap}`; }
       const frac = clamp(ni / S.endI, 0, 1); $('#dpb').style.width = frac * 100 + '%'; $('#dme').style.left = frac * 100 + '%';
+      if (ghost) { const g = ghostAt(S.t); $('#dghosts').innerHTML = `<span class="dghost" style="left:${g.f * 100}%">👻<em>${esc2(ghost.n.slice(0, 8))}</em></span>`; }
       // next instruction
       const j = S.juncs.find(x => !x.done), cp = S.cps.find(x => !x.done), st = S.stops.find(x => !x.done && !x.passed), fs = S.fuels.find(x => !x.done);
       let next = '', hint = '';
@@ -1032,7 +1273,7 @@ function start(o) {
     }
     function background(kind) {
       c.fillStyle = skyG; c.fillRect(0, 0, W, HY + 2);
-      if (N) { for (const [sx, sy, r] of stars) circ(((sx * W - S.bgX * 20) % W + W) % W, sy * HY, r, 'rgba(255,255,255,.8)'); circ(W * .8, HY * .25, Math.min(W, H) * .035, '#FFF4D6'); }
+      if (N) { for (const [sx, sy, r] of stars) circ(((sx * W - S.bgX * 20) % W + W) % W, sy * HY, r, 'rgba(255,255,255,.8)'); circ(W * .8, HY * .25, Math.min(W, H) * .035, '#FFF4D6'); fireworks(); }
       else if (phase === 'dusk') circ(W * .75, HY * .82, Math.min(W, H) * .06, '#FFB25C');
       else circ(W * .82, HY * .25, Math.min(W, H) * .045, '#FFF6D0');
       const off = S.bgX * 60;
@@ -1045,8 +1286,15 @@ function start(o) {
         for (let k = 0; x < W; k++) { const b = skyline[k % skyline.length], bw = b.w * sc, bh = b.h * sc * (kind === 'lagoon' ? 1.3 : .8); rect(x, HY - bh, bw - 2, bh, N ? '#141A3A' : phase === 'dusk' ? '#4A3F6B' : '#8DA3C7'); if (N && bw > 10) for (let wy = HY - bh + 5; wy < HY - 4; wy += 7) for (let wx = x + 3; wx < x + bw - 5; wx += 6) if (((wx * 7 + wy * 13) | 0) % 5 < b.win * 3) rect(wx, wy, 2, 3, '#FFD97A'); x += bw; }
       }
     }
+    // December night sky: fireworks somewhere in the city, every few seconds
+    function fireworks() {
+      if (reduced()) return;
+      if (Math.random() < (attract ? .02 : .012) && S.fw.length < 4) { const cols = ['#FF3B4E', '#FFD23F', '#3DDC84', '#4FC3F7', '#FF8A3D', '#fff']; S.fw.push({ x: Math.random() * W, y: HY * (.15 + Math.random() * .45), t: 0, col: cols[Math.floor(Math.random() * cols.length)], n: 14 + Math.floor(Math.random() * 10) }); }
+      for (const f2 of S.fw) { f2.t += .016; const r = f2.t * Math.min(W, H) * .18, a = Math.max(0, 1 - f2.t / 1.4); c.globalAlpha = a; for (let i = 0; i < f2.n; i++) { const an = i / f2.n * 6.283; circ(f2.x + Math.cos(an) * r, f2.y + Math.sin(an) * r + f2.t * f2.t * 14, Math.max(1, 2.2 * a + .5), f2.col); } c.globalAlpha = 1; }
+      S.fw = S.fw.filter(f2 => f2.t < 1.4);
+    }
     function render() {
-      c = ctx;
+      c = ctx; N = phase === 'night';
       c.save();
       if (S.shake > 0 && !reduced()) c.translate((Math.random() - .5) * 8, (Math.random() - .5) * 6);
       const base = segAt(S.z), bp = (S.z % SEG) / SEG, psg = segAt(S.z + PZ), pp = ((S.z + PZ) % SEG) / SEG;
@@ -1055,7 +1303,7 @@ function start(o) {
       rect(0, HY, W, H - HY, C[RT[psg.type].g][0]);
       let maxy = H, x = 0, dx = -(base.curve * bp);
       const drawn = [];
-      for (let n = 0; n < DRAW; n++) {
+      for (let n = 0; n < DR; n++) {
         const sg = segs[base.i + n]; if (!sg) break;
         sg.clip = maxy;
         project(sg.p1, camX - x, camY, S.z, sg.w); project(sg.p2, camX - x - dx, camY, S.z, sg.w);
@@ -1069,6 +1317,9 @@ function start(o) {
       const bucket = new Map();
       for (const k of S.cars) { const i = Math.floor(k.z / SEG); if (!bucket.has(i)) bucket.set(i, []); bucket.get(i).push(k); }
       for (const h of S.hawkers) { h.rect = null; const i = Math.floor(h.z / SEG); if (!bucket.has(i)) bucket.set(i, []); bucket.get(i).push(h); }
+      const put = (z, e) => { const i = Math.floor(z / SEG); if (!bucket.has(i)) bucket.set(i, []); bucket.get(i).push(e); };
+      for (const hd of S.herds) if (hd.state === 'cross') for (const cw of hd.cows) put(hd.i * SEG + cw.dz, { cow: cw, z: hd.i * SEG + cw.dz, x: hd.x + cw.dx, dir: hd.dir });
+      if (ghost && S.started) { const g = ghostAt(S.t); put(g.f * S.endI * SEG, { ghost: true, z: g.f * S.endI * SEG, x: g.x, end: g.end }); }
       for (let n = drawn.length - 1; n > 0; n--) {
         const sg = drawn[n]; if (sg.p1.camera.z <= DEPTH) continue;
         const sc = sg.p1.screen.scale, k = sc * F, clipY = sg.clip;
@@ -1084,7 +1335,9 @@ function start(o) {
         const list = bucket.get(sg.i);
         if (list) for (const e of list) {
           const pct = (e.z % SEG) / SEG, s2 = lerp(sg.p1.screen.scale, sg.p2.screen.scale, pct), ex = lerp(sg.p1.screen.x, sg.p2.screen.x, pct) + s2 * e.x * sg.w * F, ey = lerp(sg.p1.screen.y, sg.p2.screen.y, pct);
-          if (e.item) { const h = 640 * s2 * F; person(ex, ey + Math.sin(e.bob) * 1.5, h, { top: { water: '#2980B9', gala: '#D35400', chips: '#16A085', bread: '#8E44AD' }[e.item], bot: '#333', skin: SKIN[1], head: 'gele', hc: '#F2C200', tray: ITEMS[e.item][0] }); if (!e.sold && !e.leaving && h > 30) { rrect(ex - h * .4, ey - h * 1.5, h * .8, h * .22, 8, '#fff'); fit(`${ITEMS[e.item][2]}🪙 tap`, ex, ey - h * 1.39, h * .75, h * .14, '#121A3A'); } else if (e.sold) text('✅', ex + h * .3, ey - h * .9, h * .2, '#000', 400); e.rect = [ex - h * .5, ey - h * 1.55, h, h * 1.6]; continue; }
+          if (e.cow) { const cw = 640 * s2 * F; cattle(ex, ey, cw, { ...e.cow, dir: e.dir }); continue; }
+          if (e.ghost) { c.save(); c.globalAlpha = .42; veh(V.draw, ex, ey, V.w * s2 * F, { col: '#9EE6FF', helmet: true }); c.restore(); const tw = V.w * s2 * F; if (tw > 18) { rrect(ex - tw * .6, ey - tw * 1.35, tw * 1.2, tw * .28, 6, 'rgba(11,42,33,.85)'); fit(`👻 ${ghost.n}`, ex, ey - tw * 1.21, tw * 1.1, tw * .18, '#9EE6FF'); } continue; }
+          if (e.item) { const h = 640 * s2 * F; person(ex, ey + Math.sin(e.bob) * 1.5, h, { top: HAWK_COL[e.item] || '#2980B9', bot: '#333', skin: SKIN[1], head: ITEMS[e.item][3] ? 'santa' : 'gele', hc: '#F2C200', tray: ITEMS[e.item][0] }); if (!e.sold && !e.leaving && h > 30) { rrect(ex - h * .4, ey - h * 1.5, h * .8, h * .22, 8, '#fff'); fit(`${ITEMS[e.item][2]}🪙 tap`, ex, ey - h * 1.39, h * .75, h * .14, '#121A3A'); } else if (e.sold) text('✅', ex + h * .3, ey - h * .9, h * .2, '#000', 400); e.rect = [ex - h * .5, ey - h * 1.55, h, h * 1.6]; continue; }
           veh(e.t, ex, ey, e.w * s2 * F, { onc: e.dir < 0, col: e.col, rack: e.rack, cond: e.cond, sticker: e.sticker, shirt: e.shirt, pass: e.pass, helmet: e.helmet, brake: e.brake });
         }
         if (needClip) c.restore();
@@ -1093,17 +1346,18 @@ function start(o) {
       const pw = V.w * F / CAM_H * .92, bounce = S.s > 2 ? Math.sin(S.t * 18) * Math.min(2, S.s / 40) : 0;
       if (!(S.inv > 0 && Math.floor(S.t * 12) % 2)) {
         c.save(); c.translate(W / 2, HY + F - 2 + bounce); c.rotate(S.steer * .04);
-        veh(V.draw, 0, 0, pw, { col: '#E8EDF5', rack: o.vehicle === 'danfo', cond: false, sticker: 'NO KING AS GOD', shirt: '#F5B83D', helmet: S.gear, pass: S.pax > 0, brake: S.brake || keys.ArrowDown || keys[' '] });
+        veh(V.draw, 0, 0, pw, { col: GCOL, rack: o.vehicle === 'danfo', cond: false, sticker: G.sticker || 'NO KING AS GOD', shirt: '#F5B83D', helmet: S.gear || attract, pass: S.pax > 0, brake: S.brake || keys.ArrowDown || keys[' '], plate: G.plate || 'NAIJA' });
         c.restore();
       }
       if (S.boost > 0 && !S.jamNear) text('🔥', W / 2, HY + F + 10, 20, '#000', 400);
+      if (haze) { const g = c.createLinearGradient(0, HY - H * .25, 0, HY + H * .35); g.addColorStop(0, 'rgba(222,200,160,.0)'); g.addColorStop(.4, 'rgba(222,200,160,.78)'); g.addColorStop(1, 'rgba(222,200,160,.0)'); c.fillStyle = g; c.fillRect(0, 0, W, H); }
       if (N) { const g = c.createRadialGradient(W / 2, HY + F * .6, F * .2, W / 2, HY + F * .6, Math.max(W, H) * .8); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,20,.45)'); c.fillStyle = g; c.fillRect(0, 0, W, H); }
       c.restore();
     }
 
     // ---------- finish ----------
     function cleanup() {
-      cancelAnimationFrame(raf); removeEventListener('resize', size); removeEventListener('keydown', kd); removeEventListener('keyup', ku); removeEventListener('deviceorientation', onTilt); document.removeEventListener('visibilitychange', onVis);
+      radio.stop(); cancelAnimationFrame(raf); removeEventListener('resize', size); removeEventListener('keydown', kd); removeEventListener('keyup', ku); removeEventListener('deviceorientation', onTilt); document.removeEventListener('visibilitychange', onVis);
       try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch {}
       try { if (document.fullscreenElement) document.exitFullscreen(); } catch {}
       ov.remove(); document.body.style.overflow = '';
@@ -1111,23 +1365,45 @@ function start(o) {
     async function finish(quit) {
       if (S.done) return; S.done = true;
       const secs = Math.round(S.t);
+      let snap = null; try { if (!quit) { render(); snap = cv.toDataURL('image/jpeg', .82); } } catch {}
+      radio.stop();
       if (race) { const exact = Math.round(S.t * 10) / 10; let v = null; try { v = await o.race.done(quit ? 600 : exact, S.crashes); } catch {} cleanup(); return resolve({ secs: exact, crashes: S.crashes, view: v }); }
       const stars = quit ? 0 : S.crashes === 0 && S.fines === 0 ? 3 : S.crashes <= 2 ? 2 : 1;
-      let bonus = 0;
-      try { const r = await o.api('/api/trip/drive-end', { picked: 0, fares: quit ? 0 : S.fares, checks: quit ? 0 : S.checks, crashes: S.crashes, secs, stars, quit: !!quit }); bonus = r.bonus; o.onCoins(r.coins); } catch {}
+      if (!paid) {
+        const exact = Math.round(S.t * 10) / 10; let r = null;
+        try { r = await o.api('/api/drive/done', { kind: mode, secs: exact, crashes: S.crashes, fines: S.fines, fares: S.fares, stars, vehicle: o.vehicle, path: daily ? S.path : null, quit: !!quit }); if (r && r.coins != null) o.onCoins(r.coins); } catch (e) { r = { error: e.message }; }
+        cleanup();
+        return resolve({ quit: !!quit, mode, secs: exact, fares: S.fares, checks: S.checks, fines: S.fines, friends: S.friends, crashes: S.crashes, stars, style: S.style, snap, server: r, vehicle: o.vehicle, from: race ? o.from : (legs[0].sub || legs[0].name), to: o.to });
+      }
+      let bonus = 0, nb = [];
+      try { const r = await o.api('/api/trip/drive-end', { picked: Math.min(20, Math.floor(S.style / 10)), vehicle: o.vehicle, fares: quit ? 0 : S.fares, checks: quit ? 0 : S.checks, crashes: S.crashes, secs, stars, quit: !!quit }); bonus = r.bonus; nb = r.newBadges || []; o.onCoins(r.coins); } catch {}
       if (!quit) {
         const card = document.createElement('div'); card.className = 'd-start';
         card.innerHTML = `<div class="d-card"><div class="d-stars">${'⭐'.repeat(stars)}${'☆'.repeat(3 - stars)}</div><h2>You don reach ${o.to.name}! 🎉</h2>
           <p>${S.crashes === 0 && !S.fines ? 'Clean driving, no scratch, no wahala with any officer 😎' : S.crashes <= 2 ? `${S.crashes} small bash${S.crashes === 1 ? '' : 'es'}${S.fines ? ` and ${S.fines} fine${S.fines > 1 ? 's' : ''}` : ''}. Still a correct driver 👍🏾` : `${S.crashes} crashes 😂 Your mechanic is smiling`}</p>
-          <div class="d-sum"><span>🧍 Passengers <b>${S.fares}</b></span>${S.friends ? `<span>🙋🏾 Friends <b>${S.friends}</b></span>` : ''}<span>👮🏾 Checks <b>${S.checks}</b></span>${S.fines ? `<span>🚨 Fines <b>${S.fines}</b></span>` : ''}<span>⏱️ <b>${secs}s</b></span><span>🎁 Bonus <b>+${bonus}</b></span></div>
+          <div class="d-sum"><span>🧍 Passengers <b>${S.fares}</b></span>${S.friends ? `<span>🙋🏾 Friends <b>${S.friends}</b></span>` : ''}<span>👮🏾 Checks <b>${S.checks}</b></span>${S.fines ? `<span>🚨 Fines <b>${S.fines}</b></span>` : ''}<span>⏱️ <b>${fmt(secs)}</b></span>${S.style ? `<span>🔥 Style <b>${S.style}</b></span>` : ''}<span>🎁 Bonus <b>+${bonus}</b></span></div>
           <button class="btn btn-gold" id="dend">See ${o.to.name} →</button></div>`;
         ov.appendChild(card); o.beep('win');
         await new Promise(res => card.querySelector('#dend').onclick = res);
       }
       cleanup();
-      resolve({ fares: S.fares, checks: S.checks, fines: S.fines, friends: S.friends, crashes: S.crashes, stars, secs, bonus });
+      resolve({ mode, fares: S.fares, checks: S.checks, fines: S.fines, friends: S.friends, crashes: S.crashes, stars, secs, bonus, style: S.style, snap, newBadges: nb, vehicle: o.vehicle, to: o.to });
     }
   });
 }
-window.NaijaDrive = { start, _debug: () => window.__nd };
+// a still picture of the player's ride, for the Garage
+function paintCar(cv, d = {}) {
+  const ctx = cv.getContext('2d'), w = cv.width, h = cv.height; c = ctx; N = !!d.night; TIME = performance.now() / 1000;
+  const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, N ? '#071a14' : '#155C45'); g.addColorStop(1, N ? '#0F3A2D' : '#1E7A5A'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  poly('#4B4E56', [w * .34, h * .3, w * .66, h * .3, w * 1.1, h, -w * .1, h]);
+  for (let i = 0; i < 4; i++) { const t1 = .32 + i * .18, t2 = t1 + .09; poly('#F2F2F2', [w * (.5 - .004 - t1 * .01), h * t1, w * (.5 + .004 + t1 * .01), h * t1, w * (.5 + .006 + t2 * .012), h * t2, w * (.5 - .006 - t2 * .012), h * t2]); }
+  const V = VEH[d.vehicle] || VEH.ride, vw = w * .52 * clamp(V.w / 640, .42, 1.05);
+  veh(V.draw, w / 2, h * .93, vw, { col: d.col || '#E8EDF5', plate: d.plate, sticker: d.sticker, rack: d.vehicle === 'danfo', helmet: true, shirt: '#F5B83D' });
+}
+function preview(el, opts = {}) {
+  if (!el || el.__ndStop) return () => {};
+  start({ to: { id: 'lekki', name: 'Lekki' }, from: 'Ojuelegba', vehicle: 'danfo', km: 18, seed: 77, ...opts, mode: 'attract', el, api: () => Promise.reject(), beep: () => {}, toast: () => {}, onCoins: () => {} });
+  return () => { if (el.__ndStop) { el.__ndStop(); el.__ndStop = null; } };
+}
+window.NaijaDrive = { start, preview, paintCar, VEH, _debug: () => window.__nd };
 })();

@@ -1,4 +1,5 @@
 node_modules
 data/*.db*
 .env
+data/spots/
 .DS_Store

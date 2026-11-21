@@ -428,32 +428,6 @@ export function sampleFace() {
   return f;
 }
 
-// ---------- demo for the card: cycles looks on a sample face ----------
-const DEMO_LOOKS = [['agbada', 'lagos'], ['asoebi', 'owambe'], ['santa', 'snow'], ['ankara', 'beach'], ['sweater', 'tree'], ['gown', 'village'], ['jersey', 'studio'], ['senator', 'airport']];
-export function swapDemo(host, cat) {
-  if (!host) return () => {};
-  const face = sampleFace(), feathered = featherFace(face), skin = hex('#7a4f33'), name = (arr, id) => (arr.find(x => x.id === id) || {});
-  host.innerHTML = `<div class="swd"><div class="swd-frame"><canvas class="swd-a"></canvas><canvas class="swd-b"></canvas><span class="swd-badge">SAMPLE</span><div class="swd-before"><canvas></canvas><small>Selfie</small></div><span class="swd-cap"></span></div></div>`;
-  const a = host.querySelector('.swd-a'), b = host.querySelector('.swd-b'), cap = host.querySelector('.swd-cap'), bf = host.querySelector('.swd-before canvas');
-  const px = Math.min(2, devicePixelRatio || 1), w = Math.round((host.clientWidth || 160) * px * 1.1);
-  [a, b].forEach(c => { c.width = Math.max(270, Math.min(540, w)); c.height = Math.round(c.width * 1.25); });
-  bf.width = bf.height = 120; const bx = bf.getContext('2d'); bx.fillStyle = '#d7e7df'; bx.fillRect(0, 0, 120, 120); bx.drawImage(face, 10, 4, 100, 128);
-  let i = 0, front = a, timer = null, alive = true, visible = true;
-  const show = () => {
-    if (!alive) return; const [o, l] = DEMO_LOOKS[i % DEMO_LOOKS.length], back = front === a ? b : a;
-    compose(back, { face: feathered, skin, outfit: o, location: l, mark: false });
-    back.classList.add('on'); front.classList.remove('on'); front = back;
-    const O = name(cat ? cat.outfits : [], o), L = name(cat ? cat.locations : [], l); cap.textContent = O.name ? `${O.emoji} ${O.name} · ${L.emoji} ${L.name}` : '';
-    i++;
-  };
-  const loop = () => { clearTimeout(timer); if (!alive) return; if (visible && !document.hidden) show(); timer = setTimeout(loop, 2600); };
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  requestAnimationFrame(() => { if (reduce) show(); else loop(); });
-  const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => { visible = es[0].isIntersecting; }) : null; if (io) io.observe(host);
-  return () => { alive = false; clearTimeout(timer); if (io) io.disconnect(); };
-}
-
-
 // ---------- the booth UI ----------
 const store = { get(k, d) { try { const v = localStorage.getItem('n25_sw_' + k); return v === null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem('n25_sw_' + k, JSON.stringify(v)); return true; } catch { return false; } } };
 const buzz = (ms = 8) => { try { navigator.vibrate && navigator.vibrate(ms); } catch {} };
@@ -474,42 +448,160 @@ const ICON = {
   spark: '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2l2.2 6.3L20 10l-5.8 1.7L12 18l-2.2-6.3L4 10l5.8-1.7zM19 15l1 2.6 2.6 1-2.6 1L19 22l-1-2.4-2.6-1 2.6-1z"/></svg>',
 };
 
+// ---------- real photo spots ----------
+let SPOTS_P = null;
+const loadSpots = () => (SPOTS_P = SPOTS_P || fetch('/api/spots').then(r => r.json()).catch(() => ({ spots: [], outfitImgs: {} })));
+const IMG = new Map();
+function loadImg(src) { if (!IMG.has(src)) IMG.set(src, new Promise((ok, no) => { const i = new Image(); i.decoding = 'async'; i.onload = () => ok(i); i.onerror = no; i.src = src; })); return IMG.get(src); }
+const BGS = new Map();
+// background canvas for a spot at a size: the real photo (cover, light depth blur) or the drawn fallback
+async function spotBg(spot, w, h) {
+  const key = spot.id + (spot.img || '') + '@' + w;
+  if (BGS.has(key)) return BGS.get(key);
+  let c;
+  if (spot.img) {
+    try { const im = await loadImg(spot.img); c = mk(w, h); const g = c.getContext('2d'), k = Math.max(w / im.width, h / im.height); g.drawImage(im, (w - im.width * k) / 2, (h - im.height * k) / 2, im.width * k, im.height * k); c = blurInto(c, Math.max(1, w / 540)); }
+    catch { c = null; }
+  }
+  if (!c) { c = mk(w, h); c.getContext('2d').drawImage(background(spot.fallback || 'studio', w / W), 0, 0, w, h); }
+  const g = c.getContext('2d'), d = g.getImageData(0, Math.round(h * .3), w, Math.round(h * .5)).data; let r = 0, gg = 0, b = 0, n = 0;
+  for (let i = 0; i < d.length; i += 64) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; n++; }
+  c.stats = { rgb: [r / n, gg / n, b / n], lum: (r * .3 + gg * .59 + b * .11) / n };
+  if (BGS.size > 30) BGS.delete(BGS.keys().next().value); BGS.set(key, c); return c;
+}
+
+// ---------- cut the person out of the selfie, on the phone (MediaPipe) ----------
+const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21';
+const MP_MODEL = 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite';
+let SEG = null;
+function segmenter() {
+  return (SEG = SEG || (async () => {
+    const v = await import(/* @vite-ignore */ MP + '/vision_bundle.mjs');
+    const files = await v.FilesetResolver.forVisionTasks(MP + '/wasm');
+    return v.ImageSegmenter.createFromOptions(files, { baseOptions: { modelAssetPath: MP_MODEL, delegate: 'CPU' }, runningMode: 'IMAGE', outputCategoryMask: false, outputConfidenceMasks: true });
+  })().catch(e => { SEG = null; throw e; }));
+}
+export function warmCutout() { segmenter().catch(() => {}); }
+async function cutout(img) {
+  const seg = await segmenter(), res = seg.segment(img), m = res.confidenceMasks[0], w = m.width, h = m.height, conf = m.getAsFloat32Array();
+  const mc = mk(w, h), mx = mc.getContext('2d'), id = mx.createImageData(w, h);
+  let x0 = w, y0 = h, x1 = 0, y1 = 0, on = 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x, a = conf[i], t = Math.min(1, Math.max(0, (a - .3) / .45)); id.data[i * 4 + 3] = t * 255; if (a > .5) { on++; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+  try { res.close(); } catch {}
+  mx.putImageData(id, 0, 0);
+  const out = mk(img.width, img.height), o = out.getContext('2d'); o.drawImage(img, 0, 0);
+  o.globalCompositeOperation = 'destination-in'; if (CAN_FILTER) o.filter = `blur(${Math.max(1, img.width / 700)}px)`; o.drawImage(mc, 0, 0, img.width, img.height); o.filter = 'none';
+  const sx = img.width / w, sy = img.height / h, cover = on / (w * h);
+  const box = { x: x0 * sx, y: y0 * sy, w: (x1 - x0 + 1) * sx, h: (y1 - y0 + 1) * sy, cut: y1 >= h - 3 };
+  // the person's average colour and brightness, for light matching
+  const sm = mk(48, 48 * img.height / img.width), sg = sm.getContext('2d'); sg.drawImage(out, 0, 0, sm.width, sm.height); const pd = sg.getImageData(0, 0, sm.width, sm.height).data; let L = 0, n = 0;
+  for (let i = 0; i < pd.length; i += 4) if (pd[i + 3] > 200) { L += pd[i] * .3 + pd[i + 1] * .59 + pd[i + 2] * .11; n++; }
+  return { canvas: out, box, cover, lum: n ? L / n : 128 };
+}
+
+// ---------- Christmas decor drawn over the real photo ----------
+const DECOR = [
+  { id: 'lights', name: 'Fairy lights', emoji: '💡' }, { id: 'sparkle', name: 'Gold sparkle', emoji: '✨' }, { id: 'snow', name: 'Snow', emoji: '❄️' },
+  { id: 'frame', name: 'Merry frame', emoji: '🖼️' }, { id: 'confetti', name: 'Confetti', emoji: '🎉' }, { id: 'none', name: 'Clean', emoji: '🚫' },
+];
+function drawDecor(c, id, r) {
+  if (id === 'lights') {
+    for (const [y0, sag, off] of [[-10, 120, 0], [-30, 80, .5]]) {
+      c.strokeStyle = '#1d2a22'; c.lineWidth = 4; c.beginPath(); c.moveTo(-20, y0); c.quadraticCurveTo(540, y0 + sag * 2, 1100, y0); c.stroke();
+      for (let i = 0; i < 16; i++) { const t = (i + off + .5) / 16, x = -20 + t * 1120, y = (1 - t) * (1 - t) * y0 + 2 * (1 - t) * t * (y0 + sag * 2) + t * t * y0 + 14, col = ['#ff4d5e', '#ffd34d', '#66e08a', '#7fc4ff', '#ff9a3c'][i % 5];
+        glow(c, x, y + 12, 46, col, .55); c.fillStyle = col; c.beginPath(); c.ellipse(x, y + 14, 10, 15, 0, 0, 7); c.fill(); c.fillStyle = '#2b3b33'; c.fillRect(x - 6, y - 4, 12, 9); c.fillStyle = 'rgba(255,255,255,.7)'; c.beginPath(); c.arc(x - 3, y + 9, 3, 0, 7); c.fill(); }
+    }
+  } else if (id === 'sparkle') {
+    bokeh(c, r, 26, ['#ffe39a', '#f5b83d', '#ffffff'], 0, H, [8, 34], [.18, .45]);
+    for (let i = 0; i < 26; i++) { const x = r() * W, y = r() * H * .7, s = 6 + r() * 14; c.fillStyle = `rgba(255,236,170,${.6 + r() * .4})`; c.beginPath(); c.moveTo(x, y - s); c.lineTo(x + s * .25, y - s * .25); c.lineTo(x + s, y); c.lineTo(x + s * .25, y + s * .25); c.lineTo(x, y + s); c.lineTo(x - s * .25, y + s * .25); c.lineTo(x - s, y); c.lineTo(x - s * .25, y - s * .25); c.fill(); }
+  } else if (id === 'snow') {
+    for (let i = 0; i < 220; i++) { const s = 2 + r() * 6; c.fillStyle = `rgba(255,255,255,${.5 + r() * .5})`; c.beginPath(); c.arc(r() * W, r() * H, s, 0, 7); c.fill(); }
+    bokeh(c, r, 14, ['#ffffff'], 0, H, [14, 36], [.12, .3]);
+  } else if (id === 'confetti') {
+    for (let i = 0; i < 120; i++) { c.save(); c.translate(r() * W, r() * H * .75); c.rotate(r() * 6); c.fillStyle = pick(['#f5b83d', '#d7263d', '#ffffff', '#2e9b72', '#7fc4ff'], r); c.globalAlpha = .7 + r() * .3; c.fillRect(-10, -4, 20, 8); c.restore(); }
+  } else if (id === 'frame') {
+    c.strokeStyle = '#F5B83D'; c.lineWidth = 14; rr(c, 26, 26, W - 52, H - 52, 34); c.stroke(); c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 3; rr(c, 46, 46, W - 92, H - 92, 24); c.stroke();
+    c.save(); c.textAlign = 'center'; c.font = `900 64px ${FONT}`; c.lineWidth = 10; c.strokeStyle = 'rgba(0,0,0,.35)'; c.strokeText('Merry Christmas', CX, 140); c.fillStyle = '#FFE7A3'; c.fillText('Merry Christmas', CX, 140); c.restore();
+    for (const [x, y] of [[70, 70], [W - 70, 70]]) { c.fillStyle = '#d7263d'; c.beginPath(); c.arc(x, y + 30, 22, 0, 7); c.fill(); c.fillStyle = '#1e7a5a'; c.beginPath(); c.ellipse(x - 22, y + 4, 26, 12, -.5, 0, 7); c.fill(); c.beginPath(); c.ellipse(x + 22, y + 4, 26, 12, .5, 0, 7); c.fill(); }
+  }
+}
+
+// st: { bg (canvas), cut (cutout), P {x, y, h} (centre x, bottom y, height in picture units), decor, mark, label, ai (Image) }
+async function composeSpot(out, spot, st) {
+  const s = out.width / W, c = out.getContext('2d'), r = seeded(spot.id.length * 31 + (st.decor || '').length);
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  if (st.ai) { const im = st.ai, k = Math.max(out.width / im.width, out.height / im.height); c.drawImage(im, (out.width - im.width * k) / 2, (out.height - im.height * k) * .35, im.width * k, im.height * k); }
+  else {
+    const bg = await spotBg(spot, out.width, out.height); c.drawImage(bg, 0, 0);
+    if (st.cut) {
+      const cv = st.cut.canvas, b = st.cut.box, k = (st.P.h * s) / b.h, dw = cv.width * k, dh = cv.height * k, dx = st.P.x * s - (b.x + b.w / 2) * k, dy = st.P.y * s - (b.y + b.h) * k;
+      const L = mk(out.width, out.height), l = L.getContext('2d');
+      const bright = Math.max(.82, Math.min(1.18, Math.sqrt((bg.stats.lum + 30) / (st.cut.lum + 30))));
+      if (CAN_FILTER) l.filter = `brightness(${bright.toFixed(3)}) saturate(1.04)`;
+      l.drawImage(cv, dx, dy, dw, dh); l.filter = 'none';
+      l.globalCompositeOperation = 'source-atop'; l.globalAlpha = .14; l.fillStyle = rgba(bg.stats.rgb, 1); l.fillRect(0, 0, L.width, L.height);
+      l.globalAlpha = .22; l.fillStyle = lin(l, 0, 0, L.width, 0, [[0, rgba(spot.tint || '#ffd27a', 1)], [.25, 'rgba(0,0,0,0)'], [.75, 'rgba(0,0,0,0)'], [1, rgba(spot.tint || '#ffd27a', 1)]]); l.fillRect(0, 0, L.width, L.height);
+      if (!b.cut) { c.save(); c.fillStyle = rad(c, st.P.x * s, st.P.y * s, 0, 120 * s, [[0, 'rgba(0,0,0,.45)'], [1, 'rgba(0,0,0,0)']]); c.setTransform(1, 0, 0, .22, 0, st.P.y * s * .78); c.fillRect(0, 0, out.width, out.height * 2); c.restore(); }
+      c.save(); c.shadowColor = 'rgba(0,0,0,.45)'; c.shadowBlur = 30 * s; c.shadowOffsetY = 8 * s; c.drawImage(L, 0, 0); c.restore();
+    }
+  }
+  c.setTransform(s, 0, 0, s, 0, 0); if (st.decor && st.decor !== 'none') drawDecor(c, st.decor, r);
+  finishFrame(out, { mark: st.mark, label: st.label }, .26);
+}
+
+// ---------- the Party card demo: real spots slideshow ----------
+export function swapDemo(host) {
+  if (!host) return () => {};
+  host.innerHTML = `<div class="swd"><div class="swd-frame"><canvas class="swd-a"></canvas><canvas class="swd-b"></canvas><span class="swd-badge">📍 SPOTS</span><span class="swd-cap"></span></div></div>`;
+  const a = host.querySelector('.swd-a'), b = host.querySelector('.swd-b'), cap = host.querySelector('.swd-cap');
+  const px = Math.min(2, devicePixelRatio || 1), w = Math.max(270, Math.min(540, Math.round((host.clientWidth || 160) * px * 1.1)));
+  [a, b].forEach(c => { c.width = w; c.height = Math.round(w * 1.25); });
+  let i = 0, front = a, timer = null, alive = true, visible = true, list = [];
+  const decor = ['lights', 'sparkle', 'snow', 'confetti'];
+  const show = async () => {
+    if (!alive || !list.length) return; const sp = list[i % list.length], back = front === a ? b : a;
+    await composeSpot(back, sp, { decor: decor[i % decor.length], mark: false, label: '' });
+    back.classList.add('on'); front.classList.remove('on'); front = back; cap.textContent = `${sp.emoji} ${sp.name} · ${sp.city}`; i++;
+  };
+  const loop = () => { clearTimeout(timer); if (!alive) return; if (visible && !document.hidden) show(); timer = setTimeout(loop, 2800); };
+  loadSpots().then(d => { list = d.spots.slice().sort((x, y) => (y.img ? 1 : 0) - (x.img ? 1 : 0)); if (matchMedia('(prefers-reduced-motion: reduce)').matches) show(); else loop(); });
+  const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => { visible = es[0].isIntersecting; }) : null; if (io) io.observe(host);
+  return () => { alive = false; clearTimeout(timer); if (io) io.disconnect(); };
+}
+
+// ---------- the booth ----------
 export async function openSwap(x) {
   const { api, toast, track, beep, confetti, sheet, premiumSheet, redeemSheet, token, refCode } = x;
-  // after a premium code: reload what this player can do and redraw the screen they are on
-  async function upgraded() { try { C = await api('/api/swap/config'); } catch { return; } if (screen === 'studio') studio(); else if (screen === 'home') home(); }
-  let C; try { C = await api('/api/swap/config'); } catch (e) { return toast(e.message); }
-  track('swap_open');
+  let C, SP; try { [C, SP] = await Promise.all([api('/api/swap/config'), loadSpots()]); } catch (e) { return toast(e.message); }
+  if (!SP.spots.length) return toast('Photo spots no load. Check your data and try again.');
+  track('swap_open'); warmCutout();
   const ov = document.createElement('div'); ov.className = 'overlay swap'; document.body.appendChild(ov); document.body.style.overflow = 'hidden';
   let stream = null, stopDemo = () => {}, plans = null, screen = 'home';
-  const st = { img: null, T: null, face: null, feathered: null, skin: null, outfit: 'sweater', location: 'tree', mark: true, ai: null, aiUrl: null, how: '', dirty: false };
-  const O_ = (id) => C.outfits.find(z => z.id === id), L_ = (id) => C.locations.find(z => z.id === id);
+  const st = { img: null, cut: null, P: null, spot: (SP.spots.find(z => z.img) || SP.spots[0]).id, outfit: 'own', decor: 'lights', mark: true, ai: null, aiFor: '', how: '', dirty: false };
+  const SPOT = (id) => SP.spots.find(z => z.id === id), OUTF = (id) => id === 'own' ? { id: 'own', name: 'My own clothes', emoji: '👕' } : C.outfits.find(z => z.id === id);
   const stopCam = () => { if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; } };
-  const destroy = () => { stopCam(); stopDemo(); if (st.aiUrl) URL.revokeObjectURL(st.aiUrl); ov.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', esc, true); };
+  const destroy = () => { stopCam(); stopDemo(); ov.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', esc, true); };
   const close = () => { if (st.dirty && screen === 'studio') return confirmLeave(destroy); destroy(); };
   const esc = (e) => { if (e.key === 'Escape' && !document.querySelector('.sheet-bg')) close(); }; document.addEventListener('keydown', esc, true);
-  const isFree = (kind, id) => !!(C[kind].find(z => z.id === id) || {}).free;
-  const isLocked = (o, l) => !C.premium && (!isFree('outfits', o) || !isFree('locations', l));
-  const locked = () => isLocked(st.outfit, st.location);
-  const freeO = C.outfits.filter(z => z.free).length, freeL = C.locations.filter(z => z.free).length;
   const go = (fn) => { ov.classList.remove('swx-in'); void ov.offsetWidth; ov.classList.add('swx-in'); fn(); ov.scrollTop = 0; };
-
+  async function upgraded() { try { C = await api('/api/swap/config'); } catch { return; } if (screen === 'studio') studio(); else if (screen === 'home') home(); }
   const bar = (title, back) => `<div class="swx-top">${back ? `<button class="swx-ic swx-back" aria-label="${escH(back)}">${ICON.back}</button>` : `<button class="swx-ic swx-x" aria-label="Close">${ICON.close}</button>`}
     <b class="swx-ttl">${title}</b>${C.premium ? '<em class="swx-crown">👑 PREMIUM</em>' : '<button class="swx-up">Go Premium</button>'}${back ? `<button class="swx-ic swx-x" aria-label="Close">${ICON.close}</button>` : ''}</div>`;
   const wire = (onBack) => { ov.querySelectorAll('.swx-x').forEach(b => b.onclick = close); const bk = ov.querySelector('.swx-back'); if (bk) bk.onclick = onBack; const up = ov.querySelector('.swx-up'); if (up) up.onclick = () => paywall('top'); };
+  const aiLine = () => !C.ai ? 'Coming soon' : C.aiLeft ? `${C.aiLeft} of ${C.aiDaily} left today` : C.premium ? 'Used up today' : 'Free one used today';
 
   // ---------- popups ----------
   function confirmLeave(then) {
-    const bg = sheet(`<div class="swx-sh"><span class="swx-sh-ic">🥺</span><h3>Leave without saving?</h3><p>Your Christmas drip is not saved yet. If you leave now, you go lose this look.</p>
+    const bg = sheet(`<div class="swx-sh"><span class="swx-sh-ic">🥺</span><h3>Leave without saving?</h3><p>Your Christmas picture is not saved yet. If you leave now, you go lose it.</p>
       <div class="swx-sh-acts"><button class="btn btn-gold" id="lvStay">Keep editing</button><button class="btn swx-ghost" id="lvGo">Leave anyway</button></div></div>`);
     bg.querySelector('#lvStay').onclick = () => bg.remove(); bg.querySelector('#lvGo').onclick = () => { bg.remove(); st.dirty = false; then(); };
   }
   function tipsThen(next) {
-    if (store.get('tips', false)) return next();
-    const bg = sheet(`<div class="swx-sh"><span class="swx-sh-ic">📸</span><h3>3 tips for the best drip</h3>
-      <ul class="swx-tips"><li><i>☀️</i><span><b>Face the light</b><small>Window light or daylight. No dark rooms.</small></span></li><li><i>🙂</i><span><b>Look straight at the camera</b><small>Head straight, face fully in view.</small></span></li><li><i>🕶️</i><span><b>Remove caps and sunglasses</b><small>The outfit brings its own headwear.</small></span></li></ul>
-      <p class="swx-fine">🔒 We'll ask to use your camera. Nothing is recorded or uploaded. Your photo stays on this phone.</p>
-      <button class="btn btn-gold" id="tpGo">Got it, let's go</button></div>`, { onClose: () => store.set('tips', true) });
+    if (store.get('tips2', false)) return next();
+    const bg = sheet(`<div class="swx-sh"><span class="swx-sh-ic">📸</span><h3>3 tips for a real-looking picture</h3>
+      <ul class="swx-tips"><li><i>☀️</i><span><b>Good light on your face</b><small>Daylight or a bright room. No dark corners.</small></span></li><li><i>🧍🏾</i><span><b>Show yourself from the waist up</b><small>Stand a little back. Just you in the picture.</small></span></li><li><i>🧱</i><span><b>Plain background helps</b><small>A wall behind you makes the cutout cleaner.</small></span></li></ul>
+      <p class="swx-fine">🔒 We'll ask to use your camera. Photo Spot pictures are made on this phone. Nothing is uploaded.</p>
+      <button class="btn btn-gold" id="tpGo">Got it, let's go</button></div>`, { onClose: () => store.set('tips2', true) });
     bg.querySelector('#tpGo').onclick = () => { bg.remove(); next(); };
   }
   function camBlocked() {
@@ -519,92 +611,106 @@ export async function openSwap(x) {
     bg.querySelector('#cbUp').onclick = () => { bg.remove(); fileInput(false); }; bg.querySelector('#cbTry').onclick = () => { bg.remove(); camera(); };
   }
   function chooseSource() {
-    const bg = sheet(`<div class="swx-sh"><span class="swx-sh-ic">✨</span><h3>Add your face</h3><p>${escH(O_(st.outfit).emoji + ' ' + O_(st.outfit).name)} at ${escH(L_(st.location).emoji + ' ' + L_(st.location).name)} is waiting for you.</p>
+    const s = SPOT(st.spot);
+    const bg = sheet(`<div class="swx-sh"><span class="swx-sh-ic">${s.emoji}</span><h3>Add yourself</h3><p>${escH(s.name)}, ${escH(s.city)} is lit up and waiting for you.</p>
       <div class="swx-src"><button id="srCam">${ICON.cam}<b>Take a selfie</b><small>Best results</small></button><button id="srUp">${ICON.img}<b>Upload a photo</b><small>From your gallery</small></button></div></div>`);
     bg.querySelector('#srCam').onclick = () => { bg.remove(); tipsThen(camera); }; bg.querySelector('#srUp').onclick = () => { bg.remove(); fileInput(false); };
+  }
+  function noPerson() {
+    const bg = sheet(`<div class="swx-sh"><span class="swx-sh-ic">🔍</span><h3>We no see you well</h3><p>We couldn't find a person clearly in that photo. Try one where you're facing the camera, in good light, from the waist up.</p>
+      <div class="swx-sh-acts"><button class="btn btn-gold" id="npCam">${ICON.cam} Take a new selfie</button><button class="btn swx-ghost" id="npUp">Upload another photo</button></div></div>`);
+    bg.querySelector('#npCam').onclick = () => { bg.remove(); camera(); }; bg.querySelector('#npUp').onclick = () => { bg.remove(); fileInput(false); };
   }
   async function paywall(from, preview) {
     track('premium_view', { from: 'swap_' + from });
     if (!plans) { try { const g = await api('/api/gist/config'); plans = { list: g.plans, interested: g.interested }; } catch (e) { return premiumSheet('swap'); } }
     let pick = (plans.list.find(p => p.best) || plans.list[0]).id;
     const bg = sheet(`<div class="swx-pay">
-      ${preview ? `<div class="swx-pay-pic"><img src="${preview}" alt=""><span>${ICON.lock} Your look</span></div>` : '<div class="swx-pay-ic">👑</div>'}
-      <h3>Unlock your full <span class="swx-gold">Christmas drip</span></h3>
-      <ul class="swx-feat"><li>${ICON.check}<span><b>All ${C.outfits.length} outfits and ${C.locations.length} locations</b><small>Agbada, gele, senator, Lagos, owambe, village and more</small></span></li>
+      ${preview ? `<div class="swx-pay-pic"><img src="${preview}" alt=""><span>👑 Your picture</span></div>` : '<div class="swx-pay-ic">👑</div>'}
+      <h3>Go <span class="swx-gold">Premium</span> for December</h3>
+      <ul class="swx-feat"><li>${ICON.check}<span><b>${C.aiPremiumDaily} real AI pictures a day</b><small>New outfit, real spot, your own face${C.ai ? '' : ' (coming soon)'}</small></span></li>
         <li>${ICON.check}<span><b>HD pictures, no watermark</b><small>1080 × 1350, made for status and Instagram</small></span></li>
-        <li>${ICON.check}<span><b>Realistic AI swap, first</b><small>${C.ai ? 'Live now: photo-real, your own face' : 'Coming soon. Premium gets it first'}</small></span></li>
-        <li>${ICON.check}<span><b>All 6 Gist Partners + voice</b><small>Your padi gists you about your real game</small></span></li></ul>
+        <li>${ICON.check}<span><b>All 6 Gist Partners + voice</b><small>Your padi gists you about your real game</small></span></li>
+        <li>${ICON.check}<span><b>Every Photo Spot stays free</b><small>Premium just makes it even better</small></span></li></ul>
       <div class="swx-plans">${plans.list.map(p => `<button class="swx-plan ${p.id === pick ? 'on' : ''}" data-pl="${p.id}">${p.best ? '<em>BEST VALUE</em>' : ''}<span class="swx-radio"></span><span class="swx-pl-main"><b>${escH(p.name)}</b><small>${escH(p.blurb)}</small></span><span class="swx-pl-price"><b>₦${p.price.toLocaleString()}</b><small>${p.days} days</small></span></button>`).join('')}</div>
       <button class="btn btn-gold swx-pay-go" id="pwGo">Reserve my spot</button>
       <p class="swx-fine">Payments open very soon. Reserve now and we'll tell you first. No charge today.</p>
       ${redeemSheet ? '<button class="rd-link" id="pwCode">🎟️ Have a code? Enter it</button>' : ''}</div>`);
     const pc = bg.querySelector('#pwCode'); if (pc) pc.onclick = () => { bg.remove(); redeemSheet(upgraded); };
-    const sel =() => { bg.querySelectorAll('.swx-plan').forEach(b => b.classList.toggle('on', b.dataset.pl === pick)); const done = plans.interested.includes(pick); const g = bg.querySelector('#pwGo'); g.textContent = done ? '✓ You are on the list' : 'Reserve my spot'; g.disabled = done; };
+    const sel = () => { bg.querySelectorAll('.swx-plan').forEach(b => b.classList.toggle('on', b.dataset.pl === pick)); const done = plans.interested.includes(pick); const g = bg.querySelector('#pwGo'); g.textContent = done ? '✓ You are on the list' : 'Reserve my spot'; g.disabled = done; };
     bg.querySelectorAll('.swx-plan').forEach(b => b.onclick = () => { pick = b.dataset.pl; buzz(); sel(); }); sel();
     bg.querySelector('#pwGo').onclick = async () => {
       try { await api('/api/premium/interest', { plan: pick }); plans.interested.push(pick); buzz(20); beep && beep('win');
-        bg.querySelector('.swx-pay').innerHTML = `<div class="swx-done"><span>🎉</span><h3>You're on the list!</h3><p>The moment premium opens, you'll be the first to know. Your looks will be waiting.</p><button class="btn btn-gold" id="pwOk">Back to my drip</button></div>`;
+        bg.querySelector('.swx-pay').innerHTML = `<div class="swx-done"><span>🎉</span><h3>You're on the list!</h3><p>The moment premium opens, you'll be the first to know.</p><button class="btn btn-gold" id="pwOk">Back to my picture</button></div>`;
         bg.querySelector('#pwOk').onclick = () => bg.remove(); confetti && confetti(70);
       } catch (e) { toast(e.message); }
     };
   }
   function aiSoon() {
-    const bg = sheet(`<div class="swx-sh"><span class="swx-sh-ic swx-spark">${ICON.spark}</span><h3>Realistic AI is coming</h3>
-      <p>Soon, one tap will turn your drip into a real-looking photo: same face, real fabric, real light. Like you actually went to the shoot.</p>
-      <div class="swx-ba"><div><span>Studio</span><b>🎨</b><small>Drawn outfit, today</small></div><i>→</i><div class="on"><span>Realistic</span><b>📷</b><small>Photo-real, soon</small></div></div>
-      ${C.premium ? '<button class="btn btn-gold" id="aiOk">✓ You get it first</button>' : '<button class="btn btn-gold" id="aiGo">Get premium, be first</button>'}</div>`);
-    const ok = bg.querySelector('#aiOk'); if (ok) ok.onclick = () => bg.remove();
-    const g = bg.querySelector('#aiGo'); if (g) g.onclick = () => { bg.remove(); paywall('ai'); };
+    const bg = sheet(`<div class="swx-sh"><span class="swx-sh-ic swx-spark">${ICON.spark}</span><h3>Make it real is coming</h3>
+      <p>Soon, one tap will redraw you at the spot as a real photo, in any outfit you pick: agbada, gele, senator, Father Christmas…</p>
+      <button class="btn btn-gold" id="aiOk">Okay, can't wait</button></div>`);
+    bg.querySelector('#aiOk').onclick = () => bg.remove();
   }
-  function savedSheet(url, b, label) {
+  function savedSheet(url, b, text) {
     const bg = sheet(`<div class="swx-sh swx-saved"><div class="swx-saved-pic"><img src="${url}" alt="Your picture"><span class="swx-burst">✓</span></div>
-      <h3>Saved! Your drip is ready 🎉</h3><p>Check your downloads or gallery. Now make them jealous.</p>
-      <div class="swx-sh-acts"><button class="btn btn-wa" id="svWa">${ICON.share} Post to WhatsApp status</button><button class="btn swx-ghost" id="svMore">Try another look</button></div>
-      ${C.premium ? '' : '<button class="swx-upsell" id="svUp">👑 <span><b>Remove the watermark, go HD</b><small>Unlock all outfits and locations</small></span><i>›</i></button>'}</div>`);
-    bg.querySelector('#svWa').onclick = () => shareBlob(b, label);
+      <h3>Saved! Your picture is ready 🎉</h3><p>Check your downloads or gallery. Now make them jealous.</p>
+      <div class="swx-sh-acts"><button class="btn btn-wa" id="svWa">${ICON.share} Post to WhatsApp status</button><button class="btn swx-ghost" id="svMore">Try another spot</button></div>
+      ${C.premium ? '' : '<button class="swx-upsell" id="svUp">👑 <span><b>Remove the watermark, go HD</b><small>Plus 10 real AI pictures a day</small></span><i>›</i></button>'}</div>`);
+    bg.querySelector('#svWa').onclick = () => shareBlob(b, text);
     bg.querySelector('#svMore').onclick = () => bg.remove();
     const up = bg.querySelector('#svUp'); if (up) up.onclick = () => { bg.remove(); paywall('saved'); };
   }
   function lookSheet(item) {
-    const bg = sheet(`<div class="swx-sh swx-saved"><div class="swx-saved-pic"><img src="${item.t}" alt=""></div><h3>${escH(item.n)}</h3><p>${new Date(item.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · low-res keepsake. Make it again for the full picture.</p>
-      <div class="swx-sh-acts"><button class="btn btn-gold" id="lkAgain">Make this look again</button><button class="btn swx-ghost" id="lkDel">Remove</button></div></div>`);
-    bg.querySelector('#lkAgain').onclick = () => { bg.remove(); st.outfit = item.o; st.location = item.l; chooseSource(); };
+    const bg = sheet(`<div class="swx-sh swx-saved"><div class="swx-saved-pic"><img src="${item.t}" alt=""></div><h3>${escH(item.n)}</h3><p>${new Date(item.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · small keepsake. Make it again for the full picture.</p>
+      <div class="swx-sh-acts"><button class="btn btn-gold" id="lkAgain">Take it again</button><button class="btn swx-ghost" id="lkDel">Remove</button></div></div>`);
+    bg.querySelector('#lkAgain').onclick = () => { bg.remove(); if (SPOT(item.l)) st.spot = item.l; chooseSource(); };
     bg.querySelector('#lkDel').onclick = () => { store.set('looks', store.get('looks', []).filter(z => z.at !== item.at)); bg.remove(); home(); };
   }
 
-  // ---------- photo input ----------
+  // ---------- photo in ----------
   const fileInput = (capture) => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; if (capture) i.capture = 'user'; i.onchange = () => { if (i.files && i.files[0]) loadFile(i.files[0], capture ? 'camera' : 'upload'); }; i.click(); };
   async function loadFile(file, how) {
     try {
       const url = URL.createObjectURL(file), im = new Image(); im.src = url; await im.decode();
       const k = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight)), cv = mk(im.naturalWidth * k, im.naturalHeight * k); cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); URL.revokeObjectURL(url);
-      stopCam(); st.how = how; setImage(cv, false); track('swap_photo', { how });
+      stopCam(); st.how = how; track('swap_photo', { how }); prepare(cv);
     } catch { toast('That photo no open. Try a JPG or PNG.'); }
   }
-  function setImage(img, fromCam) { st.img = img; const k = Math.max(SW / img.width, SH / img.height); st.T = { cx: SW / 2, cy: SH / 2, k, k0: k, rot: 0 }; st.ai = null; go(() => adjust(fromCam)); }
+  async function prepare(img) {
+    screen = 'cutting'; stopDemo(); st.img = img; st.ai = null;
+    ov.innerHTML = `<div class="inner swx swx-cut">${bar('Getting you ready', 'Back')}
+      <div class="swx-cutbox"><img src="${img.toDataURL('image/jpeg', .8)}" alt=""><div class="swx-scan"></div></div>
+      <b class="swx-cut-t" id="cutT">Cutting you out…</b><small class="swx-cut-s">Made right here on your phone. First time takes a few seconds.</small></div>`;
+    wire(() => go(home));
+    try {
+      const cut = await cutout(img); if (screen !== 'cutting') return;
+      if (cut.cover < .03 || cut.box.h < img.height * .2) { go(home); return noPerson(); }
+      st.cut = cut; const b = cut.box;
+      st.P = { x: CX, y: b.cut ? H + 4 : H * .95, h: b.cut ? H * .64 * Math.min(1.25, img.height / b.h > 1.6 ? 1.1 : 1) : H * .78 };
+      st.dirty = true; buzz(15); go(studio);
+    } catch (e) { console.error(e); if (screen !== 'cutting') return; go(home); toast('The cutout tool no load. Check your data and try again.'); }
+  }
 
   // ---------- home ----------
   function home() {
     screen = 'home'; stopCam(); stopDemo();
     const looks = store.get('looks', []);
-    const trend = [['agbada', 'lagos', '🔥 Most picked'], ['asoebi', 'owambe', '💃🏾 Owambe ready'], ['santa', 'snow', '🎅🏾 Classic'], ['ankara', 'beach', '🌅 Golden hour'], ['gown', 'village', '🏡 Home for Xmas'], ['sweater', 'tree', '🎁 Free'], ['jersey', 'studio', '🦅 Detty Cup'], ['senator', 'airport', '🛬 Just landed']];
-    ov.innerHTML = `<div class="inner swx">${bar('Drip Booth')}
+    ov.innerHTML = `<div class="inner swx">${bar('Christmas Photo Booth')}
       <section class="swx-hero"><div id="swHomeDemo"></div></section>
-      <h2 class="swx-h">Your Christmas <span class="swx-gold">drip</span>,<br>anywhere in Naija.</h2>
-      <p class="swx-lede">One selfie. ${C.outfits.length} outfits. ${C.locations.length} December locations. A picture ready for your status in seconds.</p>
-      <div class="swx-how"><div><b>1</b><span>Snap</span></div><i></i><div><b>2</b><span>Dress up</span></div><i></i><div><b>3</b><span>Pick the place</span></div><i></i><div><b>4</b><span>Post am</span></div></div>
-      <div class="swx-sec"><h3>Trending looks</h3><small>Tap one to try it</small></div>
-      <div class="swx-trend" id="swTrend">${trend.map(([o, l, t]) => `<button class="swx-tc" data-o="${o}" data-l="${l}"><canvas width="240" height="300"></canvas><span class="swx-tc-tag">${t}</span>${isLocked(o, l) ? `<span class="swx-lk">${ICON.lock}</span>` : ''}<b>${escH(O_(o).name)}</b><small>${escH(L_(l).name)}</small></button>`).join('')}</div>
-      ${looks.length ? `<div class="swx-sec"><h3>Your looks</h3><small>${looks.length} saved on this phone</small></div><div class="swx-mine">${looks.map((z, i) => `<button data-look="${i}"><img src="${z.t}" alt="${escH(z.n)}"></button>`).join('')}</div>` : ''}
-      <div class="swx-trust"><span>🔒<b>Private</b><small>${C.ai ? 'We never store your photo' : 'Photo stays on your phone'}</small></span><span>⚡<b>Instant</b><small>Made right here, no waiting</small></span><span>${C.premium ? '👑<b>Premium</b><small>Everything unlocked</small>' : `🎁<b>Free to try</b><small>${freeO} outfits, ${freeL} places</small>`}</span></div>
+      <h2 class="swx-h">Snap yourself at <span class="swx-gold">Lekki Bridge</span>,<br>without leaving your room.</h2>
+      <p class="swx-lede">Real photos of Naija's favourite spots, dressed up for Christmas. Take a selfie and you're there. Free.</p>
+      <div class="swx-how"><div><b>1</b><span>Snap</span></div><i></i><div><b>2</b><span>Pick a spot</span></div><i></i><div><b>3</b><span>Dress up</span></div><i></i><div><b>4</b><span>Post am</span></div></div>
+      <div class="swx-sec"><h3>Popular spots</h3><small>${SP.spots.length} places · tap one</small></div>
+      <div class="swx-trend" id="swSpots">${SP.spots.map(s => `<button class="swx-tc" data-s="${s.id}"><canvas width="240" height="300"></canvas><span class="swx-tc-tag">${s.emoji} ${escH(s.city)}</span><b>${escH(s.name)}</b><small>${s.img ? 'Real photo' : 'Photo coming soon'}</small></button>`).join('')}</div>
+      ${looks.length ? `<div class="swx-sec"><h3>Your pictures</h3><small>${looks.length} saved on this phone</small></div><div class="swx-mine">${looks.map((z, i) => `<button data-look="${i}"><img src="${z.t}" alt="${escH(z.n)}"></button>`).join('')}</div>` : ''}
+      <div class="swx-trust"><span>🔒<b>Private</b><small>Photo Spot is made on your phone</small></span><span>⚡<b>Instant</b><small>No waiting, no upload</small></span><span>✨<b>Make it real</b><small>${C.ai ? `AI outfits · ${C.aiFreeDaily ? C.aiFreeDaily + ' free a day' : 'premium'}` : 'AI outfits soon'}</small></span></div>
       <div class="swx-bar"><button class="btn btn-gold swx-main" id="swCam">${ICON.cam} Take a selfie</button><button class="swx-side" id="swUp" aria-label="Upload a photo">${ICON.img}<small>Upload</small></button></div></div>`;
     wire();
-    stopDemo = swapDemo(ov.querySelector('#swHomeDemo'), C);
+    stopDemo = swapDemo(ov.querySelector('#swHomeDemo'));
     ov.querySelector('#swCam').onclick = () => { buzz(); tipsThen(camera); }; ov.querySelector('#swUp').onclick = () => { buzz(); fileInput(false); };
-    const face = featherFace(sampleFace()), cards = [...ov.querySelectorAll('.swx-tc')]; let k = 0;
-    const next = () => { if (k >= cards.length || !cards[k].isConnected) return; const b = cards[k++]; compose(b.querySelector('canvas'), { face, skin: hex('#7a4f33'), outfit: b.dataset.o, location: b.dataset.l }); setTimeout(next, 30); };
-    setTimeout(next, 250);
-    cards.forEach(b => b.onclick = () => { buzz(); st.outfit = b.dataset.o; st.location = b.dataset.l; if (st.feathered) return go(studio); chooseSource(); });
+    ov.querySelectorAll('.swx-tc').forEach(b => { const s = SPOT(b.dataset.s); composeSpot(b.querySelector('canvas'), s, { decor: 'lights', mark: false, label: '' });
+      b.onclick = () => { buzz(); st.spot = s.id; if (st.cut) return go(studio); chooseSource(); }; });
     ov.querySelectorAll('[data-look]').forEach(b => b.onclick = () => lookSheet(looks[+b.dataset.look]));
   }
 
@@ -614,12 +720,12 @@ export async function openSwap(x) {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return fileInput(true);
     let facing = 'user', timerOn = false;
     ov.innerHTML = `<div class="inner swx swx-cam">${bar('Selfie', 'Back')}
-      <div class="sw-stage swx-stage"><video playsinline muted autoplay></video>${ovalSvg()}<span class="swx-chip-hint">Fit your face in the oval</span><button class="swx-timer" id="swTimer" aria-label="3 second timer">${ICON.timer}<small>Off</small></button><div class="sw-count"></div><div class="sw-flash"></div><div class="swx-wait"><span></span>Opening camera…</div></div>
-      <p class="swx-hint">Hairline to chin inside the oval. Face the light.</p>
+      <div class="sw-stage swx-stage"><video playsinline muted autoplay></video><div class="swx-guide"></div><span class="swx-chip-hint">Waist up, good light, just you</span><button class="swx-timer" id="swTimer" aria-label="3 second timer">${ICON.timer}<small>Off</small></button><div class="sw-count"></div><div class="sw-flash"></div><div class="swx-wait"><span></span>Opening camera…</div></div>
+      <p class="swx-hint">Tip: use the timer, prop your phone up, and stand back a little.</p>
       <div class="swx-shoot"><button class="swx-round" id="swUp2" aria-label="Upload a photo">${ICON.img}</button><button class="sw-shutter swx-shutter" id="swSnap" aria-label="Take photo"></button><button class="swx-round" id="swFlip" aria-label="Switch camera">${ICON.flip}</button></div></div>`;
     wire(() => go(home)); ov.querySelector('#swUp2').onclick = () => fileInput(false);
     const v = ov.querySelector('video'), wait = ov.querySelector('.swx-wait');
-    const start = async () => { stopCam(); wait.hidden = false; try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 1280 } }, audio: false }); if (screen !== 'camera') return stopCam(); v.srcObject = stream; v.classList.toggle('mirror', facing === 'user'); await v.play().catch(() => {}); wait.hidden = true; }
+    const start = async () => { stopCam(); wait.hidden = false; try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 1600 } }, audio: false }); if (screen !== 'camera') return stopCam(); v.srcObject = stream; v.classList.toggle('mirror', facing === 'user'); await v.play().catch(() => {}); wait.hidden = true; }
       catch (e) { wait.hidden = true; go(home); if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) camBlocked(); else { toast('No camera found. Upload a photo instead.'); fileInput(false); } } };
     await start();
     ov.querySelector('#swFlip').onclick = () => { buzz(); facing = facing === 'user' ? 'environment' : 'user'; start(); };
@@ -629,118 +735,87 @@ export async function openSwap(x) {
       if (timerOn) { const ct = ov.querySelector('.sw-count'); for (let n = 3; n > 0; n--) { ct.textContent = n; ct.classList.remove('go'); void ct.offsetWidth; ct.classList.add('go'); beep && beep('tap'); await new Promise(z => setTimeout(z, 900)); if (!stream) return; } ct.textContent = ''; }
       buzz(25); const f = ov.querySelector('.sw-flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
       const cv = mk(v.videoWidth, v.videoHeight), g = cv.getContext('2d'); if (facing === 'user') { g.translate(cv.width, 0); g.scale(-1, 1); } g.drawImage(v, 0, 0);
-      stopCam(); st.how = 'camera'; track('swap_photo', { how: 'camera' }); setTimeout(() => setImage(cv, true), 260);
+      stopCam(); st.how = 'camera'; track('swap_photo', { how: 'camera' }); setTimeout(() => prepare(cv), 260);
     };
-  }
-
-  // ---------- fit the face ----------
-  function adjust(fromCam) {
-    screen = 'adjust';
-    ov.innerHTML = `<div class="inner swx swx-adj">${bar('Fit your face', 'Retake')}
-      <div class="sw-stage swx-stage"><canvas></canvas><span class="swx-chip-hint">${fromCam ? 'Looking sharp! Fine-tune if you like' : 'Drag and pinch to fit the oval'}</span></div>
-      <div class="swx-tools"><label><span>Zoom</span><input type="range" id="swZ" min="50" max="400" value="100"></label><label><span>Tilt</span><input type="range" id="swR" min="-30" max="30" value="0"></label><button class="swx-reset" id="swRs">Reset</button></div>
-      <div class="swx-bar"><button class="btn btn-gold swx-main" id="swOk">Use this face ›</button></div></div>`;
-    wire(() => st.how === 'camera' ? go(camera) : fileInput(false));
-    const cv = ov.querySelector('canvas'), stage = ov.querySelector('.sw-stage'), z = ov.querySelector('#swZ'), rt = ov.querySelector('#swR'), T = st.T;
-    const px = Math.min(2.5, devicePixelRatio || 1); cv.width = Math.round(stage.clientWidth * px); cv.height = Math.round(cv.width * SH / SW);
-    const sync = () => { z.value = Math.round(T.k / T.k0 * 100); rt.value = Math.round(T.rot * 57.3); };
-    const draw = () => { const g = cv.getContext('2d'), s = cv.width / SW; g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#07130e'; g.fillRect(0, 0, cv.width, cv.height); g.setTransform(s, 0, 0, s, 0, 0); drawImg(g, st.img, T);
-      g.fillStyle = 'rgba(4,12,9,.66)'; g.beginPath(); g.rect(0, 0, SW, SH); g.ellipse(OV.x, OV.y, OV.w / 2, OV.h / 2, 0, 0, 7); g.fill('evenodd');
-      g.strokeStyle = '#F5B83D'; g.lineWidth = 2.5; g.beginPath(); g.ellipse(OV.x, OV.y, OV.w / 2, OV.h / 2, 0, 0, 7); g.stroke();
-      g.strokeStyle = 'rgba(255,255,255,.3)'; g.lineWidth = 1; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(OV.x - 60, OV.y - 18); g.lineTo(OV.x + 60, OV.y - 18); g.moveTo(OV.x, OV.y - OV.h / 2 + 8); g.lineTo(OV.x, OV.y + OV.h / 2 - 8); g.stroke(); g.setLineDash([]);
-      g.fillStyle = 'rgba(255,255,255,.75)'; g.font = `700 9px ${FONT}`; g.textAlign = 'center'; g.fillText('EYES', OV.x + 78, OV.y - 15); };
-    sync(); draw();
-    const pts = new Map(); let last = null;
-    const pos = (e) => { const b = cv.getBoundingClientRect(); return { x: (e.clientX - b.left) * SW / b.width, y: (e.clientY - b.top) * SH / b.height }; };
-    const zoomAt = (f, m) => { const nk = Math.max(T.k0 * .5, Math.min(T.k0 * 4, T.k * f)); f = nk / T.k; T.cx = m.x + (T.cx - m.x) * f; T.cy = m.y + (T.cy - m.y) * f; T.k = nk; sync(); };
-    cv.onpointerdown = (e) => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, pos(e)); last = null; stage.classList.add('touch'); };
-    cv.onpointermove = (e) => { if (!pts.has(e.pointerId)) return; const p = pos(e), prev = pts.get(e.pointerId); pts.set(e.pointerId, p);
-      if (pts.size === 1) { T.cx += p.x - prev.x; T.cy += p.y - prev.y; }
-      else { const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y), m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; if (last) { zoomAt(d / last.d, m); T.cx += m.x - last.m.x; T.cy += m.y - last.m.y; } last = { d, m }; }
-      draw(); };
-    cv.onpointerup = cv.onpointercancel = (e) => { pts.delete(e.pointerId); last = null; if (!pts.size) stage.classList.remove('touch'); };
-    cv.onwheel = (e) => { e.preventDefault(); zoomAt(Math.exp(-e.deltaY * .0015), pos(e)); draw(); };
-    z.oninput = () => { zoomAt((z.value / 100 * T.k0) / T.k, { x: OV.x, y: OV.y }); draw(); };
-    rt.oninput = () => { T.rot = rt.value / 57.3; draw(); };
-    ov.querySelector('#swRs').onclick = () => { buzz(); Object.assign(T, { cx: SW / 2, cy: SH / 2, k: T.k0, rot: 0 }); sync(); draw(); };
-    ov.querySelector('#swOk').onclick = () => { buzz(15); st.face = cropFace(st.img, T); st.feathered = featherFace(st.face); st.skin = sampleSkin(st.face); st.ai = null; st.dirty = true; go(studio); };
   }
 
   // ---------- studio ----------
   function studio() {
     screen = 'studio';
-    let tab = 'outfits', pend = 0, thumbJob = 0;
-    ov.innerHTML = `<div class="inner swx swx-st">${bar('Your drip', 'Face')}
-      <div class="swx-prev"><canvas class="swx-main-cv" width="${W}" height="${H}"></canvas><canvas class="swx-before" width="${SW * 2}" height="${SH * 2}" hidden></canvas><img class="sw-ai" alt="Realistic version" hidden>
-        <span class="swx-ai-tag" hidden>✨ Realistic AI</span><span class="swx-before-tag" hidden>Before</span>
-        <div class="swx-fab"><button id="swDice" aria-label="Surprise me">${ICON.dice}</button><button id="swCmp" aria-label="Hold to compare">${ICON.eye}</button></div>
-        <div class="sw-busy swx-cook" hidden><span></span><b id="swCookT">Making it realistic…</b><small id="swCookS">About 30 to 60 seconds. Keep the app open.</small><i class="swx-prog"><em id="swCookP"></em></i></div></div>
-      <div class="swx-seg" role="tablist"><i class="swx-seg-ind"></i><button class="on" data-tab="outfits">Outfit</button><button data-tab="locations">Location</button></div>
+    let tab = 'spots', job = 0;
+    ov.innerHTML = `<div class="inner swx swx-st">${bar('Your Christmas picture', 'New photo')}
+      <div class="swx-prev"><canvas class="swx-main-cv" width="${W}" height="${H}"></canvas><canvas class="swx-before" hidden></canvas>
+        <span class="swx-ai-tag" hidden>✨ Made real with AI</span><span class="swx-before-tag" hidden>Your photo</span><span class="swx-drag" id="swDrag">☝🏾 Drag to move · pinch to resize</span>
+        <div class="swx-fab"><button id="swDice" aria-label="Surprise me">${ICON.dice}</button><button id="swCmp" aria-label="Hold to see your photo">${ICON.eye}</button></div>
+        <div class="swx-want" id="swWant" hidden></div>
+        <div class="sw-busy swx-cook" hidden><span></span><b id="swCookT">Making it real…</b><small id="swCookS">About 30 to 60 seconds. Keep the app open.</small><i class="swx-prog"><em id="swCookP"></em></i></div></div>
+      <div class="swx-seg swx-seg3" role="tablist"><i class="swx-seg-ind"></i><button class="on" data-tab="spots">📍 Spot</button><button data-tab="outfits">👗 Outfit</button><button data-tab="decor">✨ Decor</button></div>
       <div class="swx-rail" id="swRail"></div>
-      <div class="swx-lockcard" id="swLock" hidden></div>
-      <button class="swx-ai" id="swAI"><span class="swx-ai-ic">${ICON.spark}</span><span><b>Make it realistic</b><small>${C.ai ? (C.premium ? `AI keeps your face · ${C.aiLeft} left today` : 'Premium · AI keeps your face') : 'Coming soon · premium gets it first'}</small></span><em>${C.ai ? 'NEW' : 'SOON'}</em></button>
+      <button class="swx-ai" id="swAI"><span class="swx-ai-ic">${ICON.spark}</span><span><b id="swAIt">Make it real</b><small id="swAIs"></small></span><em>${C.ai ? 'AI' : 'SOON'}</em></button>
       ${C.premium ? `<label class="swx-toggle"><span><b>Detty December mark</b><small>Show the brand on your picture</small></span><input type="checkbox" id="swMark" ${st.mark ? 'checked' : ''}><i></i></label>` : ''}
       <div class="swx-bar"><button class="swx-side swx-share" id="swShare">${ICON.share}<small>Share</small></button><button class="btn btn-gold swx-main" id="swSave">${ICON.dl} Save picture</button></div></div>`;
-    wire(() => go(() => adjust(false)));
-    const cv = ov.querySelector('.swx-main-cv'), img = ov.querySelector('.sw-ai'), aiTag = ov.querySelector('.swx-ai-tag'), lockC = ov.querySelector('#swLock'), rail = ov.querySelector('#swRail');
-    const label = () => { const L = L_(st.location); return `${L.emoji} ${L.name}`; };
-    const render = () => { cancelAnimationFrame(pend); pend = requestAnimationFrame(() => {
-      if (st.ai && st.aiRaw) { const g = cv.getContext('2d'), im = st.aiRaw, k = Math.max(W / im.width, H / im.height); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(im, (W - im.width * k) / 2, (H - im.height * k) / 2 - (H - im.height * k) * .15, im.width * k, im.height * k); finishFrame(cv, { mark: st.mark, label: label() }); }
-      else compose(cv, { face: st.feathered, skin: st.skin, outfit: st.outfit, location: st.location, mark: C.premium ? st.mark : true, locked: locked(), label: label() });
+    wire(() => go(home));
+    const cv = ov.querySelector('.swx-main-cv'), aiTag = ov.querySelector('.swx-ai-tag'), rail = ov.querySelector('#swRail'), want = ov.querySelector('#swWant');
+    const label = () => { const s = SPOT(st.spot); return `${s.emoji} ${s.name}, ${s.city}`; };
+    const aiFresh = () => st.ai && st.aiFor === st.spot + '|' + st.outfit;
+    let pend = 0;
+    const render = () => { const my = ++pend; requestAnimationFrame(async () => {
+      if (my !== pend) return;
+      await composeSpot(cv, SPOT(st.spot), { cut: st.cut, P: st.P, decor: st.decor, mark: C.premium ? st.mark : true, label: label(), ai: aiFresh() ? st.ai : null });
       cv.classList.remove('pop'); void cv.offsetWidth; cv.classList.add('pop');
-      img.hidden = true; aiTag.hidden = !st.ai;
-      const lk = locked(); lockC.hidden = !lk;
-      if (lk) { const O = O_(st.outfit), L = L_(st.location), what = !O.free ? O.name : L.name;
-        lockC.innerHTML = `<span class="swx-lc-ic">${ICON.lock}</span><span><b>${escH(what)} is Premium</b><small>You're seeing a preview. Unlock to save it in HD.</small></span><button id="swGo">Unlock</button>`;
-        lockC.querySelector('#swGo').onclick = () => paywall('lockcard', snap()); }
+      aiTag.hidden = !aiFresh(); ov.querySelector('#swDrag').hidden = !!aiFresh();
+      const O = OUTF(st.outfit), needAI = st.outfit !== 'own' && !aiFresh();
+      want.hidden = !needAI; if (needAI) want.innerHTML = `${SP.outfitImgs[O.id] ? `<img src="${SP.outfitImgs[O.id]}" alt="">` : `<span>${O.emoji}</span>`}<b>${escH(O.name)}</b><small>Tap ✨ Make it real to wear it</small>`;
+      ov.querySelector('#swAIt').textContent = st.outfit === 'own' ? 'Make it real' : `Wear ${O.name}`;
+      ov.querySelector('#swAIs').textContent = C.ai ? `${st.outfit === 'own' ? 'AI blends you into the spot' : 'AI dresses you at the spot'} · ${aiLine()}` : 'AI outfits are coming soon';
+      ov.querySelector('#swAI').classList.toggle('hot', needAI && C.ai);
     }); };
-    const snap = () => { const s = mk(432, 540); s.getContext('2d').drawImage(cv, 0, 0, 432, 540); return s.toDataURL('image/jpeg', .8); };
     function railHtml() {
-      return C[tab].map(z => { const lock = !C.premium && !z.free, sel = z.id === (tab === 'outfits' ? st.outfit : st.location);
-        return `<button class="swx-th ${sel ? 'on' : ''}" data-id="${z.id}" aria-pressed="${sel}"><canvas width="144" height="180"></canvas>${lock ? `<span class="swx-lk">${ICON.lock}</span>` : z.free && !C.premium ? '<span class="swx-free">FREE</span>' : ''}<b>${escH(z.name)}</b></button>`; }).join('');
-    }
-    function drawThumbs() {
-      const job = ++thumbJob, items = [...rail.querySelectorAll('.swx-th')]; let k = 0;
-      const step = () => { if (job !== thumbJob || k >= items.length || !items[k].isConnected) return; const b = items[k++], c = b.querySelector('canvas');
-        if (tab === 'outfits') compose(c, { face: st.feathered, skin: st.skin, outfit: b.dataset.id, location: st.location });
-        else { const g = c.getContext('2d'); g.drawImage(background(b.dataset.id, .25), 0, 0, c.width, c.height); g.font = '40px serif'; g.textAlign = 'center'; g.fillText(L_(b.dataset.id).emoji, 72, 104); }
-        requestAnimationFrame(step); };
-      requestAnimationFrame(step);
+      if (tab === 'spots') return SP.spots.map(s => `<button class="swx-th ${s.id === st.spot ? 'on' : ''}" data-id="${s.id}"><canvas width="144" height="180"></canvas><b>${escH(s.name)}</b></button>`).join('');
+      if (tab === 'decor') return DECOR.map(d => `<button class="swx-th swx-chipd ${d.id === st.decor ? 'on' : ''}" data-id="${d.id}"><span>${d.emoji}</span><b>${d.name}</b></button>`).join('');
+      return [{ id: 'own', name: 'My own clothes', emoji: '👕' }, ...C.outfits].map(o => { const img = o.id !== 'own' && SP.outfitImgs[o.id];
+        return `<button class="swx-th swx-chipd ${o.id === st.outfit ? 'on' : ''}" data-id="${o.id}">${img ? `<img src="${img}" alt="">` : `<span>${o.emoji}</span>`}${o.id === 'own' ? '<span class="swx-free">FREE</span>' : '<span class="swx-aib">✨ AI</span>'}<b>${escH(o.name)}</b></button>`; }).join('');
     }
     function fillRail() {
-      rail.innerHTML = railHtml(); drawThumbs();
+      rail.innerHTML = railHtml(); const my = ++job;
+      if (tab === 'spots') { const items = [...rail.querySelectorAll('.swx-th')]; (async () => { for (const b of items) { if (my !== job) return; await composeSpot(b.querySelector('canvas'), SPOT(b.dataset.id), { cut: st.cut, P: st.P, decor: 'none', mark: false, label: '' }); } })(); }
       const on = rail.querySelector('.on'); if (on) rail.scrollLeft = Math.max(0, on.offsetLeft - rail.clientWidth / 2 + on.clientWidth / 2);
       rail.querySelectorAll('.swx-th').forEach(b => b.onclick = () => {
         buzz(); beep && beep('tap');
-        if (tab === 'outfits') st.outfit = b.dataset.id; else st.location = b.dataset.id;
-        if (st.ai) { URL.revokeObjectURL(st.aiUrl); st.ai = null; }
-        rail.querySelectorAll('.swx-th').forEach(z => { z.classList.toggle('on', z === b); z.setAttribute('aria-pressed', z === b); });
-        st.dirty = true; render();
+        if (tab === 'spots') st.spot = b.dataset.id; else if (tab === 'decor') st.decor = b.dataset.id; else st.outfit = b.dataset.id;
+        rail.querySelectorAll('.swx-th').forEach(z => z.classList.toggle('on', z === b)); st.dirty = true; render();
       });
     }
-    ov.querySelectorAll('.swx-seg button').forEach(t => t.onclick = () => { buzz(); tab = t.dataset.tab; ov.querySelector('.swx-seg').classList.toggle('right', tab === 'locations'); ov.querySelectorAll('.swx-seg button').forEach(z => z.classList.toggle('on', z === t)); fillRail(); });
+    ov.querySelectorAll('.swx-seg button').forEach((t, i) => t.onclick = () => { buzz(); tab = t.dataset.tab; ov.querySelector('.swx-seg').style.setProperty('--i', i); ov.querySelectorAll('.swx-seg button').forEach(z => z.classList.toggle('on', z === t)); fillRail(); });
     fillRail(); render();
     const mark = ov.querySelector('#swMark'); if (mark) mark.onchange = () => { st.mark = mark.checked; render(); };
-    ov.querySelector('#swDice').onclick = () => { buzz(12); const o = C.outfits[Math.floor(Math.random() * C.outfits.length)].id, l = C.locations[Math.floor(Math.random() * C.locations.length)].id; st.outfit = o; st.location = l; if (st.ai) { URL.revokeObjectURL(st.aiUrl); st.ai = null; } st.dirty = true; fillRail(); render(); };
-    // hold to compare with the original photo
+    ov.querySelector('#swDice').onclick = () => { buzz(12); st.spot = SP.spots[Math.floor(Math.random() * SP.spots.length)].id; st.decor = DECOR[Math.floor(Math.random() * (DECOR.length - 1))].id; st.dirty = true; fillRail(); render(); };
+    // move and resize yourself in the picture
+    const pts = new Map(); let last = null;
+    const pos = (e) => { const b = cv.getBoundingClientRect(); return { x: (e.clientX - b.left) * W / b.width, y: (e.clientY - b.top) * H / b.height }; };
+    const scaleBy = (f) => { st.P.h = Math.max(H * .3, Math.min(H * 1.4, st.P.h * f)); };
+    cv.onpointerdown = (e) => { if (aiFresh()) return; cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, pos(e)); last = null; ov.querySelector('#swDrag').classList.add('gone'); };
+    cv.onpointermove = (e) => { if (!pts.has(e.pointerId)) return; const p = pos(e), prev = pts.get(e.pointerId); pts.set(e.pointerId, p);
+      if (pts.size === 1) { st.P.x += p.x - prev.x; st.P.y += p.y - prev.y; } else { const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y); if (last) scaleBy(d / last); last = d; }
+      st.dirty = true; render(); };
+    cv.onpointerup = cv.onpointercancel = (e) => { pts.delete(e.pointerId); last = null; };
+    cv.onwheel = (e) => { if (aiFresh()) return; e.preventDefault(); scaleBy(Math.exp(-e.deltaY * .0015)); render(); };
+    cv.style.touchAction = 'none';
+    // hold to see the original photo
     const before = ov.querySelector('.swx-before'), btag = ov.querySelector('.swx-before-tag'), cmp = ov.querySelector('#swCmp');
-    const showBefore = (on) => { if (on) { const g = before.getContext('2d'); g.setTransform(2, 0, 0, 2, 0, 0); g.fillStyle = '#07130e'; g.fillRect(0, 0, SW, SH); drawImg(g, st.img, st.T); } before.hidden = btag.hidden = !on; };
+    const showBefore = (on) => { if (on) { before.width = 540; before.height = 675; const g = before.getContext('2d'), im = st.img, k = Math.max(540 / im.width, 675 / im.height); g.fillStyle = '#07130e'; g.fillRect(0, 0, 540, 675); g.drawImage(im, (540 - im.width * k) / 2, (675 - im.height * k) / 2, im.width * k, im.height * k); } before.hidden = btag.hidden = !on; };
     cmp.onpointerdown = (e) => { e.preventDefault(); buzz(); showBefore(true); }; cmp.onpointerup = cmp.onpointerleave = cmp.onpointercancel = () => showBefore(false);
-    cmp.onkeydown = (e) => { if (e.key === ' ' || e.key === 'Enter') showBefore(true); }; cmp.onkeyup = () => showBefore(false);
 
-    const fileName = () => `detty-drip-${st.outfit}-${st.location}.jpg`;
-    async function blob() {
-      let src = cv; if (!C.premium) { src = mk(720, 900); src.getContext('2d').drawImage(cv, 0, 0, 720, 900); }
-      return new Promise(z => src.toBlob(z, 'image/jpeg', .92));
-    }
-    const caption = () => { const O = O_(st.outfit), L = L_(st.location); return `${O.emoji} My Christmas drip: ${O.name} at ${L.name} 😎\nMake your own on Detty December: ${location.origin}/?ref=${refCode || ''}`; };
+    const fileName = () => `detty-christmas-${st.spot}.jpg`;
+    const caption = () => { const s = SPOT(st.spot); return `📍 Christmas at ${s.name}, ${s.city} 🎄😎\nTake yours on Detty December: ${location.origin}/?ref=${refCode || ''}`; };
+    async function blob() { let src = cv; if (!C.premium) { src = mk(720, 900); src.getContext('2d').drawImage(cv, 0, 0, 720, 900); } return new Promise(z => src.toBlob(z, 'image/jpeg', .92)); }
     function keep() { const s = mk(240, 300); s.getContext('2d').drawImage(cv, 0, 0, 240, 300); const t = s.toDataURL('image/jpeg', .72), looks = store.get('looks', []);
-      looks.unshift({ t, o: st.outfit, l: st.location, n: `${O_(st.outfit).name} · ${L_(st.location).name}`, at: Date.now() }); while (looks.length && !store.set('looks', looks.slice(0, 8))) looks.pop(); }
+      looks.unshift({ t, l: st.spot, n: `${SPOT(st.spot).name}${aiFresh() && st.outfit !== 'own' ? ' · ' + OUTF(st.outfit).name : ''}`, at: Date.now() }); while (looks.length && !store.set('looks', looks.slice(0, 8))) looks.pop(); }
     async function out(how) {
-      if (locked()) return paywall('save', snap());
+      if (st.outfit !== 'own' && !aiFresh()) { toast(`Tap ✨ "Wear ${OUTF(st.outfit).name}" first, or pick "My own clothes"`); ov.querySelector('#swAI').classList.add('shake'); setTimeout(() => ov.querySelector('#swAI').classList.remove('shake'), 600); return; }
       const btn = ov.querySelector(how === 'share' ? '#swShare' : '#swSave'); btn.disabled = true;
       try {
-        if (!st.ai) { try { await api('/api/swap/save', { outfit: st.outfit, location: st.location, how }); } catch (e) { if (/premium/i.test(e.message)) return paywall('save', snap()); } }
+        api('/api/swap/save', { outfit: aiFresh() ? st.outfit : 'own', spot: st.spot, how, ai: !!aiFresh() }).catch(() => {});
         const b = await blob(); if (!b) return toast('Could not make the picture. Try again.');
         keep(); st.dirty = false;
         if (how === 'share') return shareBlob(b, caption());
@@ -750,50 +825,46 @@ export async function openSwap(x) {
     }
     function download(b) { const u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = fileName(); document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); }
     shareBlob = async (b, text) => {
-      track('swap_share', { outfit: st.outfit, location: st.location });
+      track('swap_share', { spot: st.spot });
       const f = new File([b], fileName(), { type: b.type || 'image/jpeg' });
       if (navigator.canShare && navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f], text }); } catch {} return; }
       download(b); toast('Picture saved. Add it to your WhatsApp status from your gallery 📲'); window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
     };
     ov.querySelector('#swSave').onclick = () => { buzz(); out('save'); };
     ov.querySelector('#swShare').onclick = () => { buzz(); out('share'); };
+    const snap = () => { const s = mk(432, 540); s.getContext('2d').drawImage(cv, 0, 0, 432, 540); return s.toDataURL('image/jpeg', .8); };
     ov.querySelector('#swAI').onclick = () => {
       buzz();
       if (!C.ai) return aiSoon();
-      if (!C.premium) return paywall('ai', snap());
-      if (!C.aiLeft) return toast(`You've made ${C.aiDaily} realistic pictures today. Come back tomorrow!`);
-      if (store.get('aiok', false)) return realistic();
-      const bg = sheet(`<div class="swx-sh"><span class="swx-sh-ic swx-spark">${ICON.spark}</span><h3>Make it realistic</h3>
-        <p>Our AI will redraw your photo as a real-looking picture: your face, in ${escH(O_(st.outfit).name)}, at ${escH(L_(st.location).name)}.</p>
-        <ul class="swx-tips"><li><i>🤖</i><span><b>Your photo goes to OpenAI</b><small>Only for this picture, only when you tap. We never store it on our servers.</small></span></li><li><i>⏱️</i><span><b>Takes 30 to 60 seconds</b><small>Keep the app open while it cooks.</small></span></li><li><i>🎟️</i><span><b>${C.aiLeft} of ${C.aiDaily} left today</b><small>If it fails, it doesn't count.</small></span></li></ul>
-        <div class="swx-sh-acts"><button class="btn btn-gold" id="aiYes">✨ Make it realistic</button><button class="btn swx-ghost" id="aiNo">Not now</button></div></div>`);
-      bg.querySelector('#aiYes').onclick = () => { store.set('aiok', true); bg.remove(); realistic(); };
+      if (aiFresh()) return toast('This one is already real ✨ Pick another outfit or spot to make a new one.');
+      if (!C.aiLeft) return C.premium ? toast(`You've made ${C.aiDaily} real pictures today. Come back tomorrow!`) : paywall('ai_limit', snap());
+      if (store.get('aiok2', false)) return realistic();
+      const O = OUTF(st.outfit), s = SPOT(st.spot);
+      const bg = sheet(`<div class="swx-sh"><span class="swx-sh-ic swx-spark">${ICON.spark}</span><h3>Make it real</h3>
+        <p>Our AI will redraw you as a real photo at ${escH(s.name)}${st.outfit === 'own' ? ', in your own clothes' : `, wearing ${escH(O.name)}`}.</p>
+        <ul class="swx-tips"><li><i>🤖</i><span><b>Your photo goes to OpenAI</b><small>Only for this picture, only when you tap. We never store it on our servers.</small></span></li><li><i>⏱️</i><span><b>Takes 30 to 60 seconds</b><small>Keep the app open while it cooks.</small></span></li><li><i>🎟️</i><span><b>${aiLine()}</b><small>If it fails, it doesn't count.</small></span></li></ul>
+        <div class="swx-sh-acts"><button class="btn btn-gold" id="aiYes">✨ Make it real</button><button class="btn swx-ghost" id="aiNo">Not now</button></div></div>`);
+      bg.querySelector('#aiYes').onclick = () => { store.set('aiok2', true); bg.remove(); realistic(); };
       bg.querySelector('#aiNo').onclick = () => bg.remove();
     };
     async function realistic() {
-      const busy = ov.querySelector('.sw-busy'), T = ov.querySelector('#swCookT'), P = ov.querySelector('#swCookP'), O = O_(st.outfit), L = L_(st.location);
-      const steps = [`Reading your face…`, `Tailoring your ${O.name}…`, `Setting up ${L.name}…`, 'Matching the light…', 'Adding the December magic…', 'Final touches…'];
+      const busy = ov.querySelector('.sw-busy'), T = ov.querySelector('#swCookT'), P = ov.querySelector('#swCookP'), O = OUTF(st.outfit), s = SPOT(st.spot), forKey = st.spot + '|' + st.outfit;
+      const steps = ['Reading your face…', st.outfit === 'own' ? 'Keeping your outfit…' : `Tailoring your ${O.name}…`, `Taking you to ${s.name}…`, 'Matching the light…', 'Adding the Christmas magic…', 'Final touches…'];
       busy.hidden = false; ov.querySelector('#swAI').disabled = true; let t = 0;
       const tick = setInterval(() => { t++; T.textContent = steps[Math.min(steps.length - 1, Math.floor(t / 8))]; P.style.width = Math.min(94, 100 * (1 - Math.exp(-t / 28))) + '%'; }, 1000);
       T.textContent = steps[0]; P.style.width = '3%';
       try {
-        const k = Math.min(1, 1024 / Math.max(st.img.width, st.img.height)), s = mk(st.img.width * k, st.img.height * k); s.getContext('2d').drawImage(st.img, 0, 0, s.width, s.height);
-        const res = await fetch('/api/swap/render', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token }, body: JSON.stringify({ photo: s.toDataURL('image/jpeg', .9), outfit: st.outfit, location: st.location }) });
-        if (!res.ok) { const j = await res.json().catch(() => ({})); if (res.status === 402) paywall('ai'); throw new Error(j.error || 'The realistic swap no work this time.'); }
-        const blobIn = await res.blob(), url = URL.createObjectURL(blobIn), im = new Image(); im.src = url; await im.decode();
-        if (st.aiUrl) URL.revokeObjectURL(st.aiUrl);
-        st.ai = blobIn; st.aiUrl = url; st.aiRaw = im; C.aiLeft = Math.max(0, C.aiLeft - 1); st.dirty = true;
+        const k = Math.min(1, 1024 / Math.max(st.img.width, st.img.height)), sc = mk(st.img.width * k, st.img.height * k); sc.getContext('2d').drawImage(st.img, 0, 0, sc.width, sc.height);
+        const res = await fetch('/api/swap/render', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token }, body: JSON.stringify({ photo: sc.toDataURL('image/jpeg', .9), outfit: st.outfit, spot: st.spot }) });
+        if (!res.ok) { const j = await res.json().catch(() => ({})); if (res.status === 402) { C.aiLeft = 0; paywall('ai_limit', snap()); } throw new Error(j.error || 'Make it real no work this time.'); }
+        const b = await res.blob(), url = URL.createObjectURL(b), im = new Image(); im.src = url; await im.decode();
+        st.ai = im; st.aiFor = forKey; C.aiLeft = Math.max(0, C.aiLeft - 1); st.dirty = true;
         P.style.width = '100%'; beep && beep('win'); buzz(30); confetti && confetti(50); render();
-        const sm = ov.querySelector('#swAI small'); if (sm) sm.textContent = `AI keeps your face · ${C.aiLeft} left today`;
       } catch (e) { toast(e.message); }
       finally { clearInterval(tick); setTimeout(() => { busy.hidden = true; }, 250); ov.querySelector('#swAI').disabled = false; }
     }
   }
   let shareBlob = async () => {};
-
-  function drawImg(g, img, T) { g.save(); g.translate(T.cx, T.cy); g.rotate(T.rot); g.scale(T.k, T.k); g.drawImage(img, -img.width / 2, -img.height / 2); g.restore(); }
-  function cropFace(img, T) { const f = mk(FW, FH), g = f.getContext('2d'), s = FW / OV.w; g.scale(s, s); g.translate(-(OV.x - OV.w / 2), -(OV.y - OV.h / 2)); drawImg(g, img, T); return f; }
-  function ovalSvg() { return `<svg class="sw-oval" viewBox="0 0 ${SW} ${SH}" preserveAspectRatio="none" aria-hidden="true"><defs><mask id="swm"><rect width="${SW}" height="${SH}" fill="#fff"/><ellipse cx="${OV.x}" cy="${OV.y}" rx="${OV.w / 2}" ry="${OV.h / 2}" fill="#000"/></mask></defs><rect width="${SW}" height="${SH}" fill="rgba(4,12,9,.6)" mask="url(#swm)"/><ellipse class="swx-oval-line" cx="${OV.x}" cy="${OV.y}" rx="${OV.w / 2}" ry="${OV.h / 2}" fill="none" stroke="#F5B83D" stroke-width="2.5"/></svg>`; }
 
   ov.classList.add('swx-in'); home();
 }

@@ -71,6 +71,7 @@ tr.click{cursor:pointer}tr.click:hover td{background:#F7F8FE}
 .hidden{display:none}
 .legend-note{font-size:12px;color:var(--ink2);margin-top:6px}
 .qq{border-top:1px solid rgba(255,255,255,.1);padding:10px 0}.qq input{width:100%;margin:4px 0;padding:8px;border-radius:8px;border:1px solid #2E9B72;background:#0F3A2D;color:#fff}.qq-o{display:grid;grid-template-columns:1fr 1fr;gap:6px}.qq-a.right{border-color:#3DDC84}
+.sp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-bottom:14px}.sp-row{display:flex;gap:10px;align-items:flex-start;padding:8px;border:1px solid rgba(127,127,127,.25);border-radius:12px}.sp-row img,.sp-ph{width:64px;height:80px;object-fit:cover;border-radius:8px;flex:none;display:grid;place-items:center;font-size:28px;background:rgba(127,127,127,.15)}.sp-row .mini{display:block}.sp-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.sp-acts .btn{padding:5px 9px;font-size:12px}
 </style>
 </head>
 <body>
@@ -273,8 +274,26 @@ async function settings() {
       <div class="card"><h3>👑 Premium codes</h3><p class="sub">Anyone who enters a code in the app gets premium for that many days. Use them to test, for gifts, or for promos. Each player can use a code once.</p>
         <div class="tools"><input id="pcCode" placeholder="Code (leave empty for random)" style="max-width:220px"><input id="pcDays" type="number" min="1" max="365" value="30" style="width:80px" title="Days"><input id="pcUses" type="number" min="0" value="0" style="width:90px" title="Max uses (0 = unlimited)"><input id="pcNote" placeholder="Note (who it's for)" style="max-width:180px"><button class="btn" id="pcMake">Create code</button></div>
         <p class="mini">Days · max uses (0 = unlimited) · note</p><div id="pcList" class="tablewrap"><p class="sub">Loading…</p></div></div>
+      <div class="card" style="grid-column:1/-1"><h3>📸 Photo spots and outfit photos</h3><p class="sub">The Photo Booth uses a real photo for each spot. Upload your own (best: a real photo you took or have the rights to, portrait, no people in the middle) or press <b>Generate with AI</b> (needs OPENAI_API_KEY, about a minute each). Outfit photos make the outfit picker look real.</p>
+        <div class="tools"><button class="btn" id="spAll">Generate all missing with AI</button><span class="mini" id="spMsg"></span></div><div id="spList"><p class="sub">Loading…</p></div></div>
       <div class="card"><h3>Sign out</h3><button class="btn warn" id="so">Sign out of admin</button></div>
     </div>`;
+  const spRow = (kind, x, ai) => `<div class="sp-row" data-kind="${kind}" data-id="${esc(x.id)}">${x.img ? `<img src="${esc(x.img)}" alt="">` : `<span class="sp-ph">${x.emoji}</span>`}<div><b>${x.emoji} ${esc(x.name)}</b><span class="mini">${kind === 'spot' ? esc(x.city) + ' · ' : ''}${x.img ? 'Has a photo' : 'No photo yet'}</span>
+    <div class="sp-acts"><label class="btn light">Upload<input type="file" accept="image/*" hidden></label>${ai ? '<button class="btn light" data-gen>Generate with AI</button>' : ''}${x.img ? '<button class="btn light" data-rm>Remove</button>' : ''}</div></div></div>`;
+  const loadSpots = async () => { try { const r = await api('/api/admin/spots'); spState = r;
+    $('#spList').innerHTML = `<h4>Spots</h4><div class="sp-grid">${r.spots.map(x => spRow('spot', x, r.ai)).join('')}</div><h4>Outfits</h4><div class="sp-grid">${r.outfits.map(x => spRow('outfit', x, r.ai)).join('')}</div>`;
+    document.querySelectorAll('.sp-row').forEach(row => { const kind = row.dataset.kind, id = row.dataset.id;
+      row.querySelector('input').onchange = async (e) => { const f = e.target.files[0]; if (!f) return; const im = new Image(); im.src = URL.createObjectURL(f); await im.decode(); const k = Math.min(1, 1600 / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = im.width * k; c.height = im.height * k; c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        try { await api('/api/admin/spots/upload', { kind, id, photo: c.toDataURL('image/jpeg', .88) }); loadSpots(); } catch (er) { alert(er.message); } };
+      const g = row.querySelector('[data-gen]'); if (g) g.onclick = async () => { g.disabled = true; g.textContent = 'Generating… (about a minute)'; try { await api('/api/admin/spots/generate', { kind, id }); } catch (er) { alert(er.message); } loadSpots(); };
+      const rm = row.querySelector('[data-rm]'); if (rm) rm.onclick = async () => { if (!confirm('Remove this photo?')) return; await fetch(`/api/admin/spots/${kind}/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + TOK } }); loadSpots(); }; });
+  } catch (e) { $('#spList').innerHTML = `<p class="sub">${esc(e.message)}</p>`; } };
+  let spState = null;
+  $('#spAll').onclick = async () => { if (!spState) return; if (!spState.ai) return alert('Set OPENAI_API_KEY on the server first.'); const todo = [...spState.spots.filter(x => !x.img).map(x => ['spot', x]), ...spState.outfits.filter(x => !x.img).map(x => ['outfit', x])];
+    if (!todo.length) return alert('Every spot and outfit already has a photo.'); if (!confirm(`Generate ${todo.length} photos with AI? Each one is a paid OpenAI image and takes about a minute.`)) return;
+    $('#spAll').disabled = true; let i = 0; for (const [kind, x] of todo) { i++; $('#spMsg').textContent = `Generating ${i} of ${todo.length}: ${x.name}…`; try { await api('/api/admin/spots/generate', { kind, id: x.id }); } catch (er) { $('#spMsg').textContent = `${x.name}: ${er.message}`; } }
+    $('#spMsg').textContent = 'Done.'; $('#spAll').disabled = false; loadSpots(); };
+  loadSpots();
   const loadCodes = async () => { try { const r = await api('/api/admin/premium/codes'); $('#pcList').innerHTML = r.codes.length ? `<table><tr><th>Code</th><th>Days</th><th>Used</th><th>Note</th><th></th></tr>${r.codes.map(c => `<tr><td><b>${esc(c.code)}</b></td><td>${c.days}</td><td>${c.uses}${c.max_uses ? ' / ' + c.max_uses : ''}</td><td>${esc(c.note || '')}</td><td><button class="btn light" data-del="${esc(c.code)}">Delete</button></td></tr>`).join('')}</table>` : '<p class="sub">No codes yet.</p>';
     document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { if (!confirm('Delete code ' + b.dataset.del + '? Players who already used it keep their premium.')) return; await fetch('/api/admin/premium/codes/' + encodeURIComponent(b.dataset.del), { method: 'DELETE', headers: { Authorization: 'Bearer ' + TOK } }); loadCodes(); }); } catch (e) { $('#pcList').innerHTML = `<p class="sub">${esc(e.message)}</p>`; } };
   $('#pcMake').onclick = async () => { try { const r = await api('/api/admin/premium/codes', { code: $('#pcCode').value, days: $('#pcDays').value, uses: $('#pcUses').value, note: $('#pcNote').value }); $('#pcCode').value = ''; $('#pcNote').value = ''; loadCodes(); alert('Created: ' + r.code); } catch (e) { alert(e.message); } };

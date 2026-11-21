@@ -135,3 +135,41 @@ Party tab → **Drip Booth**. The player takes a selfie (live camera with a face
 | `OPENAI_BASE_URL` | Only if you use a proxy | `https://api.openai.com/v1` |
 | `SWAP_API_URL` | Your AI image endpoint for the realistic swap | off (shows "coming soon") |
 | `SWAP_API_KEY` | Bearer token sent to it | none |
+
+## Christmas Photo Booth (free + AI)
+
+Party tab → **Photo Booth**. Players take a selfie (or upload one) and appear at real popular Nigerian spots decorated for Christmas: Lekki-Ikoyi Link Bridge, Tafawa Balewa Square, Eko Atlantic, Freedom Park, Victoria Island lights, Millennium Park and Jabi Lake (Abuja), Pleasure Park (Port Harcourt), Calabar Carnival, Village Christmas, Welcome Home arrival and an Owambe hall (`data/spots.json`).
+
+- **Photo Spot (free, instant):** the person is cut out of the selfie on the phone (Google MediaPipe selfie segmenter, loaded from jsDelivr and Google's model bucket the first time) and placed into the spot photo with matched light, a soft shadow and Christmas decor (fairy lights, gold sparkle, snow, Merry frame, confetti). They can drag and pinch themselves into place. The selfie never leaves the phone. Free pictures are 720×900 with the Detty mark; premium is 1080×1350 and the mark can be turned off.
+- **Make it real (AI):** pick an outfit (agbada, gele, senator, Father Christmas…) or keep your own clothes, and OpenAI redraws you as a real photo at that spot. The server sends the selfie **and the real spot photo** to the Images edit endpoint, so the result matches the place. Free players get `FREE_AI_DAILY` a day (default 1), premium 10. `AI_GLOBAL_DAILY` (default 500) caps the whole app per day to protect your bill.
+- **Spot and outfit photos (do this once):** admin → **Settings → Photo spots and outfit photos**. For each spot, **Upload** your own real photo (best: portrait, decorated, no people in the middle) or press **Generate with AI** (or **Generate all missing**). Outfit photos make the outfit picker look real. Photos are saved in a `spots/` folder next to the database, so on Render they live on the persistent disk. Until a spot has a photo, a drawn placeholder scene is shown.
+
+## Sweet Notes 💌 (free)
+
+Party tab → **Sweet Notes**. Each player gets a link (`/n/<code>`). Anyone who opens it can send them an anonymous note without an account, choosing a vibe: sweet, funny, Christmas wish, thank you, small crush. Players can share any note as a status picture, hide it, report it, or pause their link.
+
+- **Kept kind:** links, @handles and phone numbers are blocked; insults are filtered (add words with `NOTES_BLOCKLIST`); one sender can send 12 notes an hour and 5 a day to the same person. Reported notes are hidden at once and listed at `GET /api/admin/notes`.
+- Senders are identified only by a salted hash, never shown to anyone. Set `NOTES_SALT` to keep the rate limits across restarts.
+
+## Owambe Title 👑 (free)
+
+Party tab → **Owambe Title**. Enter your name and "the elders" give you a December title ("Big Aunty Ada 'Chin-Chin', Governor of the Gele Republic"), a special power and your official Christmas food, as a certificate picture to post. Same name, same title; players can ask the elders again twice.
+
+| Variable | What it does | Default |
+|---|---|---|
+| `FREE_AI_DAILY` | Free "Make it real" AI pictures per player per day (0 turns it off for free players) | `1` |
+| `AI_GLOBAL_DAILY` | Most AI pictures the whole app makes in a day | `500` |
+| `NOTES_BLOCKLIST` | Extra words to block in Sweet Notes, comma-separated | none |
+| `NOTES_SALT` | Secret used to hash Sweet Notes senders | random each restart |
+
+## Love Corner 💘 and Gist Rooms 🎭 (free)
+
+Party tab → **Love Corner** and **Gist Rooms**. Everything is built to be fun and kind: picks are compliments only, crushes stay secret unless mutual, and rude words, links and phone numbers are blocked.
+
+- **Pick One:** a positive question ("Best Christmas smile", "Would make the best December boo"…) with 4 of your friends as options. The friend you pick gets an anonymous compliment notification; you earn 2 coins. 15 picks a day. "Picked me" shows what people said about you.
+- **Secret Crush:** pick up to 3 friends. Nobody is ever told who, unless it is mutual, then both get "It's a match!". People only see how many secret admirers they have.
+- **Be My Boo:** make an ask-out link (`/b/<code>`, no account needed to open). On their screen the **No** button runs away and the **Yes** button grows; after 6 tries No can finally be pressed. The sender is notified when the link is opened and when they answer.
+- **Love Meter:** two names → a percentage, a Naija verdict and a ship name, as a picture to post.
+- **Gist Rooms:** anonymous group chats (`/r/<code>` invite links, up to 60 people). Everyone gets a festive mask name ("Spicy Zobo 🍷"); polls, reactions, icebreakers, and an opt-in "Unmask me". Two reports hide a message; the owner can hide messages, remove someone without learning who they are, lock or delete the room.
+- **Friends** for Pick One and Secret Crush are your squad, people you invited or were invited by, people you duelled, and people you share a Gist Room with.
+- **Admin:** `GET /api/admin/love` shows totals and reported room messages.

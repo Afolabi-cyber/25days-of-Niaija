@@ -174,7 +174,7 @@ function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = crypto.
 const app = express();
 app.set('trust proxy', true);
 const json50 = express.json({ limit: '50kb' });
-app.use((req, res, next) => req.path === '/api/swap/render' ? next() : json50(req, res, next)); // the AI swap photo route has its own 6mb limit
+app.use((req, res, next) => (req.path === '/api/swap/render' || req.path === '/api/admin/spots/upload') ? next() : json50(req, res, next)); // the AI swap photo route has its own 6mb limit
 
 function auth(req, res, next) {
   const tok = (req.headers.authorization || '').replace('Bearer ', '');
@@ -1295,7 +1295,7 @@ app.get('/api/squad/:code', auth, (req, res) => {
 });
 
 // ---------- tracking ----------
-const EVENT_TYPES = new Set(['journey_start', 'leg_start', 'show_join', 'show_open', 'drive_hub', 'drive_share', 'app_open', 'tab', 'market_view', 'trip_view', 'contacts_pick', 'reaction', 'duel_share', 'share', 'invite', 'install_prompt', 'installed', 'lang', 'sound', 'board', 'squad_view', 'result_view', 'how_to', 'error', 'copy_link', 'gist_open', 'premium_view', 'flight_start', 'gist_demo_play', 'swap_open', 'swap_photo', 'swap_share']);
+const EVENT_TYPES = new Set(['journey_start', 'leg_start', 'show_join', 'show_open', 'drive_hub', 'drive_share', 'app_open', 'tab', 'market_view', 'trip_view', 'contacts_pick', 'reaction', 'duel_share', 'share', 'invite', 'install_prompt', 'installed', 'lang', 'sound', 'board', 'squad_view', 'result_view', 'how_to', 'error', 'copy_link', 'gist_open', 'premium_view', 'flight_start', 'gist_demo_play', 'swap_open', 'swap_photo', 'swap_share', 'notes_open', 'notes_share', 'note_story', 'title_make', 'title_share', 'love_open', 'rooms_open', 'room_share', 'boo_share', 'meter_make', 'meter_share', 'picks_open']);
 app.post('/api/event', auth, (req, res) => {
   const type = String(req.body.type || '');
   if (!EVENT_TYPES.has(type)) return res.status(400).json({ error: 'bad event' });
@@ -1543,7 +1543,14 @@ const GIST = require('./gist')(app, { one, all, run, db, auth, admin, now, watDa
   townName: (id) => (JOURNEY.towns.find(t => t.id === id) || { name: id }).name });
 
 // ---------- Christmas Drip Booth (premium clothe swap) ----------
-require('./swap')(app, { one, all, run, db, auth, admin, now, watDate, logEvent, isPremium: GIST.isPremium });
+const SPOTS = require('./spots')(app, { admin, logEvent, dbPath: DB_PATH, outfits: JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'swap.json'), 'utf8')).outfits });
+require('./swap')(app, { one, all, run, db, auth, admin, now, watDate, logEvent, isPremium: GIST.isPremium, spots: SPOTS });
+
+// ---------- Sweet Notes (anonymous Christmas notes) ----------
+require('./notes')(app, { one, all, run, db, auth, admin, now, logEvent, notify, ipOf });
+
+// ---------- Love Corner + Gist Rooms ----------
+require('./love')(app, { one, all, run, db, auth, admin, now, logEvent, notify, friendsOf, ipOf });
 
 // ---------- static ----------
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1h', setHeaders: (res, p) => { if (p.endsWith('sw.js') || p.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache'); } }));

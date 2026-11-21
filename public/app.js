@@ -177,9 +177,25 @@ window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); S.in
 window.addEventListener('appinstalled', () => track('installed'));
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 
+let FUN = null;
+const loadFun = async () => (FUN = FUN || await import('/fun.js'));
+const funCtx = () => ({ api, toast, track, beep, confetti, sheet, me: S.me && S.me.user });
+let LOVE = null;
+const loadLove = async () => (LOVE = LOVE || await import('/love.js'));
+const loveCtx = () => ({ api, toast, track, beep, confetti, sheet, me: S.me && S.me.user, refLink: S.me ? `${location.origin}/?ref=${S.me.user.refCode}` : location.origin, onClose: refresh });
+async function openLove(start) { try { (await loadLove()).openLove(loveCtx(), start); } catch (e) { console.error(e); toast('Love Corner no fit open. Try again.'); } }
+async function handlePendingRoom() { const pr = ls.get('pendingRoom', null); if (pr) { ls.set('pendingRoom', null); setTimeout(() => openLove({ room: pr }), 700); } }
+async function openNotes() { try { (await loadFun()).openNotes({ ...funCtx(), onClose: refresh }); } catch (e) { console.error(e); toast('Sweet Notes no fit open. Try again.'); } }
+async function openTitle() { try { (await loadFun()).openTitle(funCtx()); } catch (e) { console.error(e); toast('Try again.'); } }
 async function boot() {
   try { const c = await fetch('/api/config').then(r => r.json()); S.skew = c.now - Date.now(); S.cfg = c; } catch {}
-  if (!S.token) return renderOnboarding();
+  const nm = location.pathname.match(/^\/n\/([a-z0-9]{4,12})\/?$/i); // a friend's Sweet Notes link: works without an account
+  if (nm) { try { return (await loadFun()).noteSendPage(root, nm[1], { api, toast }); } catch (e) { console.error(e); } }
+  const bm = location.pathname.match(/^\/b\/([a-z0-9]{4,12})\/?$/i); // a "Be my boo" ask: works without an account
+  if (bm) { try { return (await loadLove()).booPage(root, bm[1], { api, toast }); } catch (e) { console.error(e); } }
+  const rm = location.pathname.match(/^\/r\/([a-z0-9]{4,12})\/?$/i); // a Gist Room invite: join after sign-in
+  if (rm) { ls.set('pendingRoom', rm[1].toLowerCase()); history.replaceState(null, '', '/'); }
+  if (!S.token) { renderOnboarding(); setTimeout(() => rocketShow('🎆 Welcome to Detty December!'), 500); return; }
   try {
     await loadMe();
     const pend = ls.get('pendingSquad', null);
@@ -187,9 +203,11 @@ async function boot() {
     track('app_open', { standalone: matchMedia('(display-mode: standalone)').matches });
     renderApp();
     { const y = S.cfg ? S.cfg.year : 2026, n = srvNow(); if (n >= Date.UTC(y, 11, 31, 23) && n < Date.UTC(y + 1, 0, 2) && !ls.get('ny' + y, false)) { ls.set('ny' + y, true); setTimeout(() => { fireworks(10); toast(`Happy New Year ${y + 1}! 🎆🥂`); }, 800); }
-      else if (n >= Date.UTC(y, 11, 24, 23) && n < Date.UTC(y, 11, 26) && !ls.get('xm' + y, false)) { ls.set('xm' + y, true); setTimeout(() => { rain(['🎄', '🎅🏾', '🎁', '✨'], 26); toast('Merry Christmas! 🎄 Send your people a gift'); }, 800); } }
+      else { setTimeout(() => rocketShow(`🎆 Welcome back, ${S.me.user.nickname}!`), 450);
+        if (n >= Date.UTC(y, 11, 24, 23) && n < Date.UTC(y, 11, 26) && !ls.get('xm' + y, false)) { ls.set('xm' + y, true); setTimeout(() => { rain(['🎄', '🎅🏾', '🎁', '✨'], 26); toast('Merry Christmas! 🎄 Send your people a gift'); }, 800); } } }
     const pd = ls.get('pendingDuel', null);
     if (pd) { ls.set('pendingDuel', null); try { await api('/api/duel/join', { code: pd }); duelLobby(pd); } catch (e) { toast(e.message); } }
+    handlePendingRoom();
     const pk = ls.get('pendingKnow', null); if (pk) { ls.set('pendingKnow', null); setTimeout(() => takeKnowMe(pk), 600); }
     if (ls.get('pendingDrive', null)) { ls.set('pendingDrive', null); S.tab = 'trip'; renderApp(); setTimeout(() => toast('🚗 Your friend dared you. Beat their time on today\'s road!'), 900); }
   } catch (e) { if (e.message !== 'auth') root.innerHTML = `<div class="wrap"><div class="card"><h3>Can't connect</h3><p>${esc(e.message)}</p><button class="btn btn-gold" onclick="location.reload()">Try again</button></div></div>`; }
@@ -261,6 +279,7 @@ async function renderOnboarding() {
       S.token = r.token; ls.set('token', r.token); ls.set('pendingSquad', null);
       await loadMe(); beep('win'); renderApp(); scrollTo(0, 0);
       const pd = ls.get('pendingDuel', null); if (pd) { ls.set('pendingDuel', null); try { await api('/api/duel/join', { code: pd }); setTimeout(() => duelLobby(pd), 600); } catch {} }
+      handlePendingRoom();
       toast(r.returning ? `Welcome back, ${S.me.user.nickname}` : `Welcome, ${S.me.user.nickname}! 🎉`);
       if (!r.returning && !ls.get('pendingDuel', null)) setTimeout(howTo, 700);
     } catch (ex) { err.textContent = ex.message; err.classList.remove('hidden'); btn.disabled = false; btn.textContent = t('start'); }
@@ -323,7 +342,7 @@ function viewHome() {
   $('#view').innerHTML = `
   <div class="wrap">
     ${m.show && ['lobby', 'ask', 'reveal'].includes(m.show.phase) ? liveCard(m) : ''}
-    ${(m.inbox || []).length ? `<section class="inbox"><div class="ib-head"><b>🔔 For you</b><button id="ibSeen">Clear</button></div>${m.inbox.slice(0, 3).map(i => `<div class="ib-row"><span>${esc(i.text)}</span>${i.link === 'drive' || i.link === 'journey' ? `<button class="btn btn-gold ib-go" data-tab-go="trip">${i.link === 'drive' ? 'Drive' : 'See map'}</button>` : i.link ? `<button class="btn btn-gold ib-go" data-duel="${esc(i.link)}">Open</button>` : ''}</div>`).join('')}</section>` : ''}
+    ${(m.inbox || []).length ? `<section class="inbox"><div class="ib-head"><b>🔔 For you</b><button id="ibSeen">Clear</button></div>${m.inbox.slice(0, 3).map(i => `<div class="ib-row"><span>${esc(i.text)}</span>${i.link === 'notes' ? `<button class="btn btn-gold ib-go" data-notes>Read</button>` : i.link === 'love' ? `<button class="btn btn-gold ib-go" data-love-go>Open</button>` : i.link === 'drive' || i.link === 'journey' ? `<button class="btn btn-gold ib-go" data-tab-go="trip">${i.link === 'drive' ? 'Drive' : 'See map'}</button>` : i.link ? `<button class="btn btn-gold ib-go" data-duel="${esc(i.link)}">Open</button>` : ''}</div>`).join('')}</section>` : ''}
     ${m.user.giftsNew ? `<button class="lbcard" id="newGifts" style="background:linear-gradient(90deg,#D7263D,#A51C2E);color:#fff"><span>🎁</span><span>You have ${m.user.giftsNew} new gift${m.user.giftsNew > 1 ? 's' : ''}!<small>Tap to open</small></span></button>` : ''}
     <section class="hero">${hero}</section>
     ${m.show && ['lobby', 'ask', 'reveal'].includes(m.show.phase) ? '' : liveCard(m)}
@@ -351,6 +370,8 @@ function viewHome() {
   if ($('#stockBtn')) $('#stockBtn').onclick = openStocking;
   if ($('#liveBtn')) $('#liveBtn').onclick = openLive;
   document.querySelectorAll('[data-duel]').forEach(b => b.onclick = () => duelLobby(b.dataset.duel));
+  document.querySelectorAll('[data-notes]').forEach(b => b.onclick = openNotes);
+  document.querySelectorAll('[data-love-go]').forEach(b => b.onclick = () => openLove());
   if ($('#ibSeen')) $('#ibSeen').onclick = async () => { await api('/api/inbox/seen', {}).catch(() => {}); S.me.inbox = []; renderApp(); };
   $('#howLink').onclick = (e) => { e.preventDefault(); howTo(); };
 }
@@ -724,6 +745,58 @@ async function giftSheet(it, fromBag, qty) {
       viewMarket();
     } catch (e) { toast(e.message); label(); }
   };
+}
+// Welcome show: firework rockets + a few 🚀 when someone opens the app (once per visit, never blocks taps).
+function rocketShow(greet) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  try { if (sessionStorage.getItem('n25_rockets')) return; sessionStorage.setItem('n25_rockets', '1'); } catch {}
+  const c = $('#confetti'); if (!c) return;
+  const D = Math.min(2, devicePixelRatio || 1), Wd = innerWidth * D, Hd = innerHeight * D, x = c.getContext('2d'); c.width = Wd; c.height = Hd;
+  const cols = ['#ffd166', '#ff4d5e', '#5ee08c', '#6ec6ff', '#fff6d5', '#c77dff', '#ff9a3c'], kinds = ['peony', 'ring', 'willow', 'heart', 'crackle', 'peony', 'ring'];
+  const shells = [], parts = [], rockets = [], R = Math.random, T0 = performance.now();
+  // firework shells: launch from the bottom at staggered times
+  for (let i = 0; i < 9; i++) shells.push({ at: i * 300 + R() * 160, x: (.12 + R() * .76) * Wd, y: Hd + 10, vx: (R() - .5) * 1.4 * D, vy: -(10.5 + R() * 3.2) * D, ty: (.12 + R() * .32) * Hd, col: cols[i % cols.length], kind: kinds[i % kinds.length], live: false, done: false });
+  // cartoon rockets zooming across
+  for (let i = 0; i < 3; i++) { const left = i % 2 === 0; rockets.push({ at: 250 + i * 650, x: left ? -40 * D : Wd + 40 * D, y: Hd * (.75 + R() * .2), vx: (left ? 1 : -1) * (6 + R() * 2) * D, vy: -(7.5 + R() * 2) * D, live: false, done: false }); }
+  const add = (p) => parts.push(Object.assign({ drag: .985, grav: .045 * D, size: 2.2 * D, flick: false }, p));
+  function burst(s) {
+    beep('tick');
+    const n = s.kind === 'willow' ? 70 : s.kind === 'crackle' ? 50 : 80;
+    for (let i = 0; i < n; i++) {
+      const a = Math.PI * 2 * i / n + R() * .05; let sp = (s.kind === 'ring' ? 4.2 : 2 + R() * 3.4) * D, vx = Math.cos(a) * sp, vy = Math.sin(a) * sp;
+      if (s.kind === 'heart') { const t = a, hx = 16 * Math.sin(t) ** 3, hy = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)); vx = hx * .26 * D; vy = hy * .26 * D; }
+      add({ x: s.x, y: s.y, vx, vy, life: s.kind === 'willow' ? 120 + R() * 40 : 70 + R() * 25, max: 140, col: s.kind === 'willow' ? '#ffd27a' : s.kind === 'crackle' ? '#fff6d5' : (R() < .25 ? '#ffffff' : s.col), drag: s.kind === 'willow' ? .97 : .985, grav: (s.kind === 'willow' ? .06 : .045) * D, flick: s.kind === 'crackle' || R() < .15, size: (s.kind === 'willow' ? 1.8 : 2.4) * D });
+    }
+    add({ x: s.x, y: s.y, vx: 0, vy: 0, life: 10, max: 10, col: '#ffffff', size: 26 * D, grav: 0, flash: true });
+  }
+  if (greet) { const g = document.createElement('div'); g.className = 'rk-greet'; g.textContent = greet; document.body.appendChild(g); setTimeout(() => g.remove(), 3800); }
+  (function loop(now) {
+    const t = now - T0; x.clearRect(0, 0, Wd, Hd); x.globalCompositeOperation = 'lighter';
+    for (const s of shells) {
+      if (s.done || t < s.at) continue; s.live = true;
+      s.x += s.vx; s.y += s.vy; s.vy += .12 * D;
+      add({ x: s.x + (R() - .5) * 2 * D, y: s.y + 6 * D, vx: (R() - .5) * .6 * D, vy: R() * 1.2 * D, life: 18 + R() * 10, max: 28, col: '#ffcf8a', size: 1.6 * D, grav: .02 * D });
+      x.fillStyle = '#fff6d5'; x.beginPath(); x.arc(s.x, s.y, 3 * D, 0, 7); x.fill();
+      if (s.y <= s.ty || s.vy >= -1 * D) { s.done = true; burst(s); }
+    }
+    for (const r of rockets) {
+      if (r.done || t < r.at) continue; r.live = true; r.x += r.vx; r.y += r.vy; r.vy += .05 * D;
+      const ang = Math.atan2(r.vy, r.vx);
+      for (let k = 0; k < 3; k++) add({ x: r.x - Math.cos(ang) * 18 * D, y: r.y - Math.sin(ang) * 18 * D, vx: -Math.cos(ang) * (1 + R() * 2) * D + (R() - .5) * D, vy: -Math.sin(ang) * (1 + R() * 2) * D + (R() - .5) * D, life: 22 + R() * 14, max: 36, col: k ? '#ffb347' : '#ff5a36', size: (2.5 + R() * 2) * D, grav: -.01 * D, drag: .95 });
+      x.save(); x.globalCompositeOperation = 'source-over'; x.translate(r.x, r.y); x.rotate(ang + Math.PI / 4); x.font = `${34 * D}px serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('🚀', 0, 0); x.restore();
+      if (r.y < -60 * D || r.x < -80 * D || r.x > Wd + 80 * D) r.done = true;
+    }
+    for (const p of parts) {
+      if (p.life <= 0) continue; p.x += p.vx; p.y += p.vy; p.vx *= p.drag; p.vy = p.vy * p.drag + p.grav; p.life--;
+      let a = Math.min(1, p.life / (p.max * .5)); if (p.flick && R() < .35) a *= .2;
+      if (p.flash) { x.globalAlpha = p.life / 10 * .5; const g = x.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 3); g.addColorStop(0, '#fff'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(p.x - p.size * 3, p.y - p.size * 3, p.size * 6, p.size * 6); continue; }
+      x.globalAlpha = a; x.fillStyle = p.col; x.beginPath(); x.arc(p.x, p.y, p.size, 0, 7); x.fill();
+    }
+    x.globalAlpha = 1; x.globalCompositeOperation = 'source-over';
+    if (parts.length > 1800) { const live = parts.filter(p => p.life > 0); parts.length = 0; parts.push(...live); }
+    const busy = shells.some(s => !s.done) || rockets.some(r => !r.done) || parts.some(p => p.life > 0);
+    if (busy && t < 7000) requestAnimationFrame(loop); else x.clearRect(0, 0, Wd, Hd);
+  })(T0);
 }
 function fireworks(bursts = 7) {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -1946,18 +2019,18 @@ async function gistHub() {
 let SWAP = null, SWAPCAT = null, swapDemoStop = null;
 const loadSwap = async () => (SWAP = SWAP || await import('/swap.js'));
 function swapCard() {
-  return `<section class="gist-hero sw-hero" id="swOpen" role="button" tabindex="0" aria-label="Open Christmas Drip Booth">
+  return `<section class="gist-hero sw-hero" id="swOpen" role="button" tabindex="0" aria-label="Open Christmas Photo Booth">
     <div class="gh-demo" id="swDemo"></div>
-    <div class="gh-copy"><small>👗 Drip Booth <em class="prem-tag">PREMIUM</em></small><h2>Wear agbada for Lagos. From your room.</h2>
-      <p>Snap a selfie, pick a Christmas outfit and a December location. Your status picture, ready in seconds.</p>
-      <ol class="gh-steps"><li><b>1</b>Snap or upload</li><li><b>2</b>Pick your outfit</li><li><b>3</b>Pick your location</li></ol>
-      <span class="btn btn-gold">Try it on</span><small class="gh-free">2 outfits + 2 locations free</small></div></section>`;
+    <div class="gh-copy"><small>📸 Photo Booth <em class="free-tag">FREE</em></small><h2>Snap yourself at Lekki Bridge. From your room.</h2>
+      <p>Real photos of Naija's favourite spots, lit up for Christmas. Take a selfie and you're there. Change your outfit with AI.</p>
+      <ol class="gh-steps"><li><b>1</b>Take a selfie</li><li><b>2</b>Pick a spot</li><li><b>3</b>Dress up and post</li></ol>
+      <span class="btn btn-gold">Take my picture</span><small class="gh-free">12 spots · free · made on your phone</small></div></section>`;
 }
 async function swapCardInit() {
   const host = $('#swDemo'), card = $('#swOpen'); if (!card) return;
   const open = async () => { try { const m = await loadSwap(); m.openSwap({ api, toast, track, beep, confetti, sheet, premiumSheet, redeemSheet, token: S.token, refCode: S.me.user.refCode }); } catch (e) { console.error(e); toast('The Drip Booth no fit open on this phone 😅'); } };
   card.onclick = open; card.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } };
-  try { const m = await loadSwap(); if (!SWAPCAT) SWAPCAT = await api('/api/swap/config'); if (swapDemoStop) swapDemoStop(); if (host.isConnected) swapDemoStop = m.swapDemo(host, SWAPCAT); } catch (e) { console.error(e); }
+  try { const m = await loadSwap(); if (swapDemoStop) swapDemoStop(); if (host.isConnected) swapDemoStop = m.swapDemo(host); } catch (e) { console.error(e); }
 }
 // Premium unlock code (testing, gifts, promos). onDone runs after premium switches on.
 function redeemSheet(onDone) {
@@ -2001,8 +2074,12 @@ async function viewParty() {
   const m = S.me;
   $('#view').innerHTML = `<div class="wrap">
     ${liveCard(m) || `<div class="livecard off"><span class="lv-ic">🎤</span><span><small>Every night at 8:30pm</small><b>Owambe Night Live</b><em>The show for today don end. Come back tomorrow, join early!</em></span></div>`}
+    <section class="love-card" id="loveOpen" role="button" tabindex="0" aria-label="Open Love Corner"><div class="love-head"><span>💘</span><div><small>Love Corner <em class="free-tag">FREE</em></small><h2>Who's your December boo?</h2></div></div>
+      <div class="love-mini"><button data-love="pick"><span>💘</span>Pick One</button><button data-love="crush"><span>💞</span>Secret Crush</button><button data-love="boo"><span>💌</span>Be My Boo</button><button data-love="meter"><span>❤️</span>Love Meter</button></div></section>
+    <button class="rooms-card" id="roomsOpen"><span>🎭</span><div><b>Gist Rooms <em class="free-tag">FREE</em></b><small>Anonymous group chat for your squad. Nobody knows who said what 🤫</small></div><i>›</i></button>
     ${gistCard()}
     ${swapCard()}
+    <div class="fun-row"><button class="fun-card fc-notes" id="snOpenBtn"><em class="free-tag">FREE</em><span>💌</span><b>Sweet Notes</b><small>Anonymous Christmas notes from your people</small></button><button class="fun-card fc-title" id="otOpenBtn"><em class="free-tag">FREE</em><span>👑</span><b>Owambe Title</b><small>The elders give you your December title</small></button></div>
     <section class="pt-hero"><div><small>🪩 Party Mode</small><h2>Everybody don gather for December?</h2><p>One phone, the whole room. Aunty Interrogation, Act Am! and Who Go Pass? Works without data.</p></div><button class="btn btn-gold" id="ptOpen">Start the party</button></section>
     <div class="section-title"><h2>How well do you know me?</h2><span>Your friends guess</span></div>
     <div class="card km-card" id="kmCard"><p>Loading…</p></div>
@@ -2010,7 +2087,8 @@ async function viewParty() {
   </div>`;
   if ($('#liveBtn')) $('#liveBtn').onclick = openLive;
   $('#ptOpen').onclick = partyHub; $('#sqOpen').onclick = submitQuestion;
-  swapCardInit(); $('#gistOpen').onclick = gistHub; demoPlayer($('#ghDemo'), { compact: true }); $('#gistOpen').onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); gistHub(); } };
+  $('#loveOpen').onclick = (e) => { const b = e.target.closest('[data-love]'); if (b && b.dataset.love === 'meter') return loadLove().then(m => m.openMeter(loveCtx())); openLove(b ? b.dataset.love : undefined); }; $('#roomsOpen').onclick = () => openLove('rooms');
+  swapCardInit(); $('#snOpenBtn').onclick = openNotes; $('#otOpenBtn').onclick = openTitle; $('#gistOpen').onclick = gistHub; demoPlayer($('#ghDemo'), { compact: true }); $('#gistOpen').onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); gistHub(); } };
   try {
     const K = await api('/api/knowme');
     const card = $('#kmCard'); if (!card) return;

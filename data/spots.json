@@ -1,0 +1,29 @@
+{
+  "_readme": "Christmas Photo Spots: real popular places, decorated for Christmas. Each spot needs a real photo: upload your own in admin → Photo spots (best), or press 'Generate with AI' there (uses OPENAI_API_KEY, 'prompt' below). Photos are stored next to the database (spots/ folder). 'fallback' is the drawn scene used until a photo exists. Edit and restart.",
+  "spots": [
+    { "id": "lekki-bridge", "name": "Lekki-Ikoyi Link Bridge", "city": "Lagos", "emoji": "🌉", "fallback": "lagos", "tint": "#ff9fd0",
+      "prompt": "the Lekki-Ikoyi Link Bridge in Lagos, Nigeria, at night, its cable-stayed tower glowing, decorated with festive red, green and gold Christmas lights, light reflections on the lagoon, a clean pedestrian walkway in the foreground" },
+    { "id": "tbs", "name": "Tafawa Balewa Square", "city": "Lagos", "emoji": "🎄", "fallback": "tree", "tint": "#ffb35c",
+      "prompt": "Tafawa Balewa Square in Lagos Island, Nigeria, at night during Christmas, with a giant illuminated Christmas tree, strings of warm fairy lights, festive decorations and an open paved plaza in the foreground" },
+    { "id": "eko-atlantic", "name": "Eko Atlantic Waterfront", "city": "Lagos", "emoji": "🌊", "fallback": "beach", "tint": "#ffb070",
+      "prompt": "the Eko Atlantic ocean waterfront promenade in Lagos, Nigeria, at golden hour in December, palm trees wrapped in warm Christmas fairy lights, festive decorations, modern towers in the distance, the Atlantic ocean and a paved promenade in the foreground" },
+    { "id": "freedom-park", "name": "Freedom Park", "city": "Lagos", "emoji": "🎶", "fallback": "owambe", "tint": "#ffc06a",
+      "prompt": "Freedom Park in Lagos Island, Nigeria, on a December evening, festive Christmas lights hanging between trees, lanterns, an open-air stage glowing in the background and a paved courtyard in the foreground" },
+    { "id": "vi-lights", "name": "Victoria Island Lights", "city": "Lagos", "emoji": "✨", "fallback": "lagos", "tint": "#ffd27a",
+      "prompt": "a busy street in Victoria Island, Lagos, Nigeria, at night in December under an arch tunnel of glowing Christmas lights, festive decorations on the buildings, a clean sidewalk in the foreground" },
+    { "id": "millennium-park", "name": "Millennium Park", "city": "Abuja", "emoji": "🌳", "fallback": "tree", "tint": "#ffcf7a",
+      "prompt": "Millennium Park in Abuja, Nigeria, on a December evening with a giant decorated Christmas tree, warm fairy lights on the trees, manicured lawns and a paved path in the foreground, Aso Rock faintly visible in the distance" },
+    { "id": "jabi-lake", "name": "Jabi Lake", "city": "Abuja", "emoji": "🏞️", "fallback": "lagos", "tint": "#9fb4ff",
+      "prompt": "the Jabi Lake waterfront in Abuja, Nigeria, at dusk during Christmas, festive string lights along the boardwalk, the lake reflecting the lights, a wooden boardwalk in the foreground" },
+    { "id": "pleasure-park", "name": "Pleasure Park", "city": "Port Harcourt", "emoji": "🎡", "fallback": "tree", "tint": "#ffb35c",
+      "prompt": "Pleasure Park in Port Harcourt, Nigeria, at night in December, a big lit ferris wheel, festive Christmas lights and decorations, a paved walkway in the foreground" },
+    { "id": "calabar", "name": "Calabar Carnival", "city": "Calabar", "emoji": "🎉", "fallback": "owambe", "tint": "#ffc06a",
+      "prompt": "a street in Calabar, Cross River State, Nigeria, during the famous December Calabar Carnival, colourful festive decorations, bunting and Christmas lights overhead, a clean street in the foreground, no crowds directly in the centre" },
+    { "id": "village", "name": "Village Christmas", "city": "Home", "emoji": "🏡", "fallback": "village", "tint": "#ffd08a",
+      "prompt": "a warm Nigerian village family compound on Christmas day in soft afternoon light, red earth, a cream bungalow with a zinc roof decorated with colourful Christmas bunting and tinsel, a leafy mango tree, an open yard in the foreground" },
+    { "id": "airport", "name": "Welcome Home Arrival", "city": "Lagos", "emoji": "🛬", "fallback": "airport", "tint": "#cfe4ff",
+      "prompt": "a bright modern airport arrival hall in Lagos decorated for Christmas, a big green WELCOME HOME banner, a tall Christmas tree, a plane visible through tall glass windows, a shiny floor in the foreground" },
+    { "id": "owambe", "name": "Owambe Hall", "city": "Lagos", "emoji": "🥂", "fallback": "owambe", "tint": "#ffc06a",
+      "prompt": "a glamorous Nigerian owambe party hall decorated for Christmas, draped gold and ivory fabric ceiling, crystal chandeliers, curtains of fairy lights, a decorated Christmas tree, elegant round tables in the background and an open dance floor in the foreground" }
+  ]
+}

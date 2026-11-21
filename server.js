@@ -173,7 +173,8 @@ function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = crypto.
 // ---------- app ----------
 const app = express();
 app.set('trust proxy', true);
-app.use(express.json({ limit: '50kb' }));
+const json50 = express.json({ limit: '50kb' });
+app.use((req, res, next) => req.path === '/api/swap/render' ? next() : json50(req, res, next)); // the AI swap photo route has its own 6mb limit
 
 function auth(req, res, next) {
   const tok = (req.headers.authorization || '').replace('Bearer ', '');
@@ -262,7 +263,7 @@ app.get('/api/me', auth, (req, res) => {
   const live = liveDay();
   res.json({
     user: { nickname: u.nickname, phone: maskPhone(u.phone), state: u.state, school: u.school, refCode: u.ref_code, lang: u.lang, waOptin: !!u.wa_optin,
-      points: u.total_points, coins: u.coins, hat: !!u.hat, giftsNew: one(`SELECT COUNT(*) n FROM gifts WHERE to_id=? AND opened=0`, u.id).n, streak: effectiveStreak(u), bestStreak: u.best_streak, savers: u.savers, rank: rankOf(u), refs, timeSpent: u.time_spent },
+      points: u.total_points, coins: u.coins, hat: !!u.hat, giftsNew: one(`SELECT COUNT(*) n FROM gifts WHERE to_id=? AND opened=0`, u.id).n, streak: effectiveStreak(u), bestStreak: u.best_streak, savers: u.savers, rank: rankOf(u), refs, timeSpent: u.time_spent, premium: (u.premium_until || 0) > now() },
     stats: { rounds: stats.rounds, accuracy: stats.rounds ? Math.round(100 * stats.correct / (stats.rounds * 7)) : 0 },
     badges, allBadges: BADGES, squads, days: dayStatus(u), now: now(), live, next: nextDay(), nextAt: nextDay() ? unlockAt(nextDay()) : null,
     inbox: all(`SELECT id, kind, text, link, created_at FROM inbox WHERE user_id=? AND seen=0 ORDER BY id DESC LIMIT 5`, u.id),
@@ -1294,7 +1295,7 @@ app.get('/api/squad/:code', auth, (req, res) => {
 });
 
 // ---------- tracking ----------
-const EVENT_TYPES = new Set(['journey_start', 'leg_start', 'show_join', 'show_open', 'drive_hub', 'drive_share', 'app_open', 'tab', 'market_view', 'trip_view', 'contacts_pick', 'reaction', 'duel_share', 'share', 'invite', 'install_prompt', 'installed', 'lang', 'sound', 'board', 'squad_view', 'result_view', 'how_to', 'error', 'copy_link']);
+const EVENT_TYPES = new Set(['journey_start', 'leg_start', 'show_join', 'show_open', 'drive_hub', 'drive_share', 'app_open', 'tab', 'market_view', 'trip_view', 'contacts_pick', 'reaction', 'duel_share', 'share', 'invite', 'install_prompt', 'installed', 'lang', 'sound', 'board', 'squad_view', 'result_view', 'how_to', 'error', 'copy_link', 'gist_open', 'premium_view', 'flight_start', 'gist_demo_play', 'swap_open', 'swap_photo', 'swap_share']);
 app.post('/api/event', auth, (req, res) => {
   const type = String(req.body.type || '');
   if (!EVENT_TYPES.has(type)) return res.status(400).json({ error: 'bad event' });
@@ -1523,6 +1524,26 @@ app.post('/api/admin/clock', admin, (req, res) => {
   run(`INSERT INTO settings(key,value) VALUES('clock_offset',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`, String(OFFSET));
   res.json({ ok: true, now: now(), offset: OFFSET });
 });
+
+// ---------- Detty Air (3D flight) ----------
+// 10 coins for each bucket-list thing done on the flight, paid once per WAT day.
+const FLIGHT_TODO = new Set(['seat', 'cockpit', 'drink', 'food', 'window', 'movie', 'gist', 'toilet', 'clap']);
+db.exec(`CREATE TABLE IF NOT EXISTS flights(user_id INTEGER, date TEXT, did TEXT, earned INTEGER, created_at INTEGER, PRIMARY KEY(user_id, date))`);
+app.post('/api/flight/done', auth, (req, res) => {
+  const did = [...new Set((Array.isArray(req.body.did) ? req.body.did : []).map(String))].filter(x => FLIGHT_TODO.has(x));
+  const date = watDate(), first = !one(`SELECT 1 FROM flights WHERE user_id=? AND date=?`, req.user.id, date);
+  const earned = first ? did.length * 10 : 0;
+  if (first) { run(`INSERT INTO flights VALUES(?,?,?,?,?)`, req.user.id, date, JSON.stringify(did), earned, now()); if (earned) run(`UPDATE users SET coins=coins+? WHERE id=?`, earned, req.user.id); }
+  logEvent(req.user.id, 'flight_done', { did: did.length, earned }, req.ipaddr);
+  res.json({ earned, coins: one(`SELECT coins FROM users WHERE id=?`, req.user.id).coins, already: !first });
+});
+
+// ---------- Gist Partner (premium) ----------
+const GIST = require('./gist')(app, { one, all, run, db, auth, admin, now, watDate, liveDay, latestOpened, effectiveStreak, rankOf, friendsOf, journeyView, showStart, SHOW_POT, logEvent,
+  townName: (id) => (JOURNEY.towns.find(t => t.id === id) || { name: id }).name });
+
+// ---------- Christmas Drip Booth (premium clothe swap) ----------
+require('./swap')(app, { one, all, run, db, auth, admin, now, watDate, logEvent, isPremium: GIST.isPremium });
 
 // ---------- static ----------
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1h', setHeaders: (res, p) => { if (p.endsWith('sw.js') || p.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache'); } }));

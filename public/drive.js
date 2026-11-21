@@ -710,6 +710,7 @@ function start(o) {
         <div class="d-fm hidden" id="dfm">📻 Detty FM 99.9 <i></i><i></i><i></i></div>
         <div class="d-style" id="dstyle"></div>
         <div class="d-coach hidden" id="dcoach"><b id="dcoacht"></b><span class="d-coach-arrow" id="dcoacha">👇</span></div>
+        <button class="d-coachx hidden" id="dcoachx">Skip tips ✕</button>
         <div class="d-turn hidden" id="dturn"><button data-ind="L" aria-label="Indicate left">⬅</button><div id="dturnt"></div><button data-ind="R" aria-label="Indicate right">➡</button></div>
         <div class="d-banner hidden" id="dban"></div>
         <div class="d-msg" id="dmsg"></div>
@@ -744,8 +745,21 @@ function start(o) {
       if (!attract && !$('#drot').classList.contains('hidden') && W > H) rotDone();
     };
     size(); addEventListener('resize', size);
-    const msg = (t, ms = 1900) => { if (attract) return; const el = $('#dmsg'); el.textContent = t; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); clearTimeout(msg.t); msg.t = setTimeout(() => el.classList.remove('show'), ms); };
-    const banner = (t, ms = 2200) => { if (attract) return; const el = $('#dban'); el.textContent = t; el.classList.remove('hidden', 'in'); void el.offsetWidth; el.classList.add('in'); clearTimeout(banner.t); banner.t = setTimeout(() => el.classList.add('hidden'), ms); };
+    // Messages sit in a slim strip under the top bar, never over the road. Important ones (fines, crashes,
+    // fuel, wrong turns) are not replaced by a minor message while they are still showing.
+    const URGENT = /^(🚨|💥|⛽|Fuel|Wrong|You missed|Find U-turn)/u;
+    const msg = (t, ms = 1900) => {
+      if (attract) return; const el = $('#dmsg'), urgent = URGENT.test(t), tNow = performance.now();
+      if (!urgent && msg.urgent && msg.until > tNow) return;
+      if (el.classList.contains('show') && el.textContent === t) return;
+      ms = Math.min(ms, 2400); msg.urgent = urgent; msg.until = tNow + ms;
+      el.textContent = t; el.classList.toggle('urgent', urgent); el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+      clearTimeout(msg.t); msg.t = setTimeout(() => el.classList.remove('show'), ms);
+    };
+    const banner = (t, ms = 2200) => { if (attract) return; const el = $('#dban'); el.textContent = t; el.classList.remove('hidden', 'in'); void el.offsetWidth; el.classList.add('in'); clearTimeout(banner.t); banner.t = setTimeout(() => el.classList.add('hidden'), Math.min(ms, 1800)); };
+    // Radio DJ lines show inside the small FM badge, not across the road.
+    const FM_IDLE = '📻 Detty FM 99.9 <i></i><i></i><i></i>';
+    const fm = (t) => { const f = $('#dfm'); if (!f) return; f.innerHTML = `📻 <span class="d-fm-t">${esc2(t)}</span>`; clearTimeout(fm.t); fm.t = setTimeout(() => { f.innerHTML = FM_IDLE; }, 6000); };
     const once = (key, fn) => { if (S.msgs[key]) return; S.msgs[key] = 1; fn(); };
     const vib = (p) => { try { navigator.vibrate && navigator.vibrate(p); } catch {} };
     let actx = null;
@@ -869,7 +883,7 @@ function start(o) {
         if ([2, 5, 9, 13].includes(k) && (st >> 4) % 2) osc('square', ch[(k >> 2) % 3] * 2, t, .08, .02);  // guitar pluck
       }
       function tick() { const a = ctx2(); while (nextT < a.currentTime + .12) { if (!S.paused) play(step, nextT); step++; nextT += SPB; }
-        if (!S.paused && S.t - djT > 32) { djT = S.t; let line; do { line = RADIO[Math.floor(Math.random() * RADIO.length)]; } while (used.includes(line) && used.length < RADIO.length); used.push(line); if (used.length > 5) used.shift(); msg(line, 3600); } }
+        if (!S.paused && S.t - djT > 32) { djT = S.t; let line; do { line = RADIO[Math.floor(Math.random() * RADIO.length)]; } while (used.includes(line) && used.length < RADIO.length); used.push(line); if (used.length > 5) used.shift(); fm(line); } }
       function start() { try { const a = ctx2(); if (a.state === 'suspended') a.resume(); nextT = a.currentTime + .05; djT = S.t - 26; timer = setInterval(tick, 30); on = true; $('#dfm').classList.remove('hidden'); $('#dradio').classList.add('on'); } catch {} }
       function stop() { clearInterval(timer); timer = null; on = false; const f = $('#dfm'); if (f) f.classList.add('hidden'); const b = $('#dradio'); if (b) b.classList.remove('on'); }
       return {
@@ -888,7 +902,8 @@ function start(o) {
         { t: () => '⬅ ➡ At a junction, tap the arrow, or keep left or right', at: 'top', done: () => false, max: 5 },
       ];
       let i = -1, since = 0;
-      function show() { const st = steps[i], el = $('#dcoach'); if (!st) { el.classList.add('hidden'); try { localStorage.setItem('n25_coached', '1'); } catch {} return; } $('#dcoacht').textContent = st.t(); el.className = 'd-coach at-' + st.at; since = S.t; }
+      function show() { const st = steps[i], el = $('#dcoach'); $('#dcoachx').classList.toggle('hidden', !st); if (!st) { el.classList.add('hidden'); try { localStorage.setItem('n25_coached', '1'); } catch {} return; } $('#dcoacht').textContent = st.t(); el.className = 'd-coach at-' + st.at; since = S.t; }
+      if (!attract) $('#dcoachx').onclick = () => { i = steps.length; show(); };
       return { start() { i = 0; show(); }, tick() { if (i < 0 || i >= steps.length) return; const st = steps[i]; if ((S.t - since > .6 && st.done()) || (st.max && S.t - since > st.max)) { o.beep('ok'); i++; show(); } } };
     })();
 
@@ -963,7 +978,7 @@ function start(o) {
     function dialog(em, title, line, replies) {
       return new Promise((res) => {
         S.paused = true; const d = $('#ddlg');
-        d.innerHTML = `<div class="d-dcard"><div class="d-dem">${em}</div><small>${title}</small><p>${line}</p><div class="d-dbtns">${replies.map((r, i) => `<button class="btn ${i ? 'btn-line' : 'btn-gold'}" data-r="${i}">${r}</button>`).join('')}</div></div>`;
+        d.innerHTML = `<div class="d-dcard"><button class="sheet-x" aria-label="Close" data-r="-1">✕</button><div class="d-dem">${em}</div><small>${title}</small><p>${line}</p><div class="d-dbtns">${replies.map((r, i) => `<button class="btn ${i ? 'btn-line' : 'btn-gold'}" data-r="${i}">${r}</button>`).join('')}</div></div>`;
         d.classList.remove('hidden');
         d.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { d.classList.add('hidden'); S.paused = false; res(+b.dataset.r); });
       });

@@ -80,8 +80,16 @@ const track = (type, meta) => { if (S.token) api('/api/event', { type, meta }).c
 const srvNow = () => Date.now() + S.skew;
 
 // ---------- feedback: toast, sound, haptics, confetti ----------
+// While a game is on screen we keep the player's eyes on the game: toasts shrink to a small
+// strip at the very top edge, can be tapped away, and celebration emojis stay out of the middle.
+const PLAY_SEL = '#game, #duel, .drive:not(.attract), .j3d, .lvov, .party, .overlay.tq, .overlay.km';
+const playing = () => !!document.querySelector(PLAY_SEL);
 let toastT;
-function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600); }
+function toast(msg) {
+  const el = $('#toast'); el.textContent = msg; el.classList.toggle('quiet', playing()); el.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), playing() ? 1800 : 2600);
+}
+document.addEventListener('click', (e) => { if (e.target.id === 'toast') { e.target.classList.remove('show'); clearTimeout(toastT); } });
 let actx;
 function beep(type) {
   if (!S.sound) return;
@@ -115,7 +123,7 @@ const RX = { ok: ['😎', '🔥', '👏🏾', '🙌🏾', '💯', '🤩', '👍�
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 function popEmoji(e) {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const d = document.createElement('div'); d.className = 'bigmoji'; d.textContent = e; document.body.appendChild(d); setTimeout(() => d.remove(), 1100);
+  const d = document.createElement('div'); d.className = 'bigmoji' + (playing() ? ' corner' : ''); d.textContent = e; document.body.appendChild(d); setTimeout(() => d.remove(), 1100);
 }
 function rain(list, n = 22) {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -354,9 +362,9 @@ async function openStocking() {
     const [r] = await Promise.all([api('/api/stocking', {}), new Promise(res => setTimeout(res, 1300))]);
     if (r.coins != null) coinsTo(r.coins);
     const big = r.n >= 250 || r.kind === 'hat';
-    ov.innerHTML = `<div class="stock-card"><div class="stock-prize">${r.kind === 'coins' ? '🪙' : r.kind === 'hat' ? '🎅🏾' : r.kind === 'gift' ? '🍗' : '⭐'}</div><h3>${esc(r.label)}</h3><p>${r.streak % 7 === 0 ? 'You opened 7 days in a row. Na you be the real Father Christmas!' : `Day ${r.streak} streak · ${7 - (r.streak % 7)} more day${7 - (r.streak % 7) === 1 ? '' : 's'} to the jackpot stocking`}</p><p class="stock-next">A new stocking appears tomorrow. Don't break the chain 🔗</p><button class="btn btn-gold" id="sDone">Oya, thank you!</button></div>`;
+    ov.innerHTML = `<div class="stock-card"><button class="sheet-x" aria-label="Close">✕</button><div class="stock-prize">${r.kind === 'coins' ? '🪙' : r.kind === 'hat' ? '🎅🏾' : r.kind === 'gift' ? '🍗' : '⭐'}</div><h3>${esc(r.label)}</h3><p>${r.streak % 7 === 0 ? 'You opened 7 days in a row. Na you be the real Father Christmas!' : `Day ${r.streak} streak · ${7 - (r.streak % 7)} more day${7 - (r.streak % 7) === 1 ? '' : 's'} to the jackpot stocking`}</p><p class="stock-next">A new stocking appears tomorrow. Don't break the chain 🔗</p><button class="btn btn-gold" id="sDone">Oya, thank you!</button></div>`;
     big ? (confetti(200), rain(['🪙', '🎉', '🤑', '🎄'], 30)) : rain(['🪙', '✨', '🎄'], 14); beep('win');
-    ov.querySelector('#sDone').onclick = () => { ov.remove(); refresh(); };
+    ov.querySelector('#sDone').onclick = ov.querySelector('.sheet-x').onclick = () => { ov.remove(); refresh(); };
   } catch (e) { ov.remove(); toast(e.message); refresh(); }
 }
 function remindCard() {
@@ -575,12 +583,23 @@ async function drawCard(s) {
 }
 
 // ---------- sheets ----------
-function sheet(html) {
+// Every sheet gets a ✕ in the corner, closes on a tap outside, on Escape and on the phone's back button.
+// opts.onClose runs however it was closed (button, ✕, outside tap, Escape or back).
+function sheet(html, opts = {}) {
   const bg = document.createElement('div'); bg.className = 'sheet-bg';
-  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>${html}</div>`;
+  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div><button class="sheet-x" aria-label="Close">✕</button>${html}</div>`;
+  const remove = bg.remove.bind(bg); let closed = false;
+  bg.remove = () => { if (closed) return; closed = true; remove(); if (opts.onClose) opts.onClose(); };
   bg.onclick = (e) => { if (e.target === bg) bg.remove(); };
+  bg.querySelector('.sheet-x').onclick = () => bg.remove();
   document.body.appendChild(bg); return bg;
 }
+// Escape closes the top-most sheet or card.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const sheets = document.querySelectorAll('.sheet-bg'); if (sheets.length) return sheets[sheets.length - 1].remove();
+  const x = document.querySelector('.stock-ov .sheet-x, .flight .sheet-x, .d-dlg:not(.hidden) .sheet-x'); if (x) x.click();
+});
 const intlPhone = (p) => { let d = String(p || '').replace(/\D/g, ''); if (d.startsWith('0')) d = '234' + d.slice(1); if (d.length === 10) d = '234' + d; return d; };
 async function drawInvite() {
   try { await document.fonts.load('800 100px "Bricolage Grotesque"'); } catch {}
@@ -668,9 +687,11 @@ function openGifts(list, itemOf) {
   const show = () => {
     const g = list[i], it = itemOf(g.item) || { emoji: '🎁', name: 'Gift' };
     const bg = sheet(`<div class="giftpop"><span class="box">${it.emoji}</span><h3>${esc(g.n)} sent you ${esc(it.name)}!</h3>${g.msg ? `<p>"${esc(g.msg)}"</p>` : ''}<p>You also got <b>+${Math.round(((S.market.items.find(x => x.id === g.item) || {}).price || 0) / 2)} coins</b> 🪙</p>
-      <button class="btn btn-gold" id="gNext">${i < list.length - 1 ? 'Open next gift 🎁' : 'Merry Christmas! 🎄'}</button></div>`);
-    confetti(90); beep('win');
-    bg.querySelector('#gNext').onclick = () => { bg.remove(); i++; if (i < list.length) show(); else { api('/api/market/opened', {}).then(() => { refresh(); viewMarket(); }).catch(() => {}); } };
+      <button class="btn btn-gold" id="gNext">${i < list.length - 1 ? 'Open next gift 🎁' : 'Merry Christmas! 🎄'}</button></div>`,
+      // closing with ✕ / outside tap = "I've seen my gifts", so they don't pop up again next time
+      { onClose: () => { if (!next) api('/api/market/opened', {}).then(() => { refresh(); viewMarket(); }).catch(() => {}); } });
+    let next = false; confetti(90); beep('win');
+    bg.querySelector('#gNext').onclick = () => { i++; next = i < list.length; bg.remove(); if (next) show(); };
   };
   show();
 }
@@ -870,6 +891,7 @@ async function viewTrip() {
   S.journey = J;
   $('#view').innerHTML = `<div class="wrap">
     ${journeySection(J)}
+    ${flightCard()}
     <div class="section-title" style="margin-top:22px"><h2>Detty Drive</h2><span>Daily challenge, free rides, garage</span></div>
     <section class="dh">
       <div class="dh-screen" id="dhScreen">
@@ -926,6 +948,7 @@ async function viewTrip() {
     <p class="foot">Drive of the Day and free rides cost nothing. Road trips cost coins. Points on the leaderboard never go down when you spend coins.</p>
   </div>`;
   bindJourney(J);
+  if ($('#flOpen')) $('#flOpen').onclick = () => flightSheet(J);
   startPreview($('#dhScreen'), { vehicle: d.vehicle, to: d.to, from: d.from, km: Math.min(d.km, 30), seed: d.seed, homeCity: d.city });
   paintMyCar($('#dmCar'), d.vehicle === 'danfo' ? 'ride' : d.vehicle);
   $('#dhGo').onclick = () => startDrive('daily');
@@ -1384,10 +1407,37 @@ function journeySetup(J) {
     } catch (e) { toast(e.message); }
   };
 }
-function flightIntro(airport, city) {
+// ---------- Detty Air: the 3D flight home ----------
+let FL3D = null;
+const airportCity = (a) => /Abuja/i.test(a || '') ? 'Abuja' : /Port Harcourt/i.test(a || '') ? 'Port Harcourt' : 'Lagos';
+async function boardFlight(from, to) {
+  try { FL3D = FL3D || await import('/flight3d.js'); } catch (e) { toast('3D could not load on this phone. Try Chrome, or update your browser.'); return null; }
+  track('flight_start', { from, to });
+  try { const r = await FL3D.startFlight({ from, to, sound: S.sound, nickname: S.me && S.me.user.nickname, api, beep, toast, onCoins: coinsTo }); refresh(); return r; }
+  catch (e) { console.error(e); toast('The plane no fit start on this phone 😅'); return null; }
+}
+function flightSheet(J) {
+  const ab = J && J.me && J.me.abroad, home = J && J.me ? airportCity((J.towns.find(t => t.id === J.me.path[0]) || {}).name) : 'Lagos';
+  let from = ab || 'London', to = ab ? home : 'Lagos';
+  const CITIES = ['London', 'Houston', 'Toronto', 'Dubai', 'Manchester', 'Atlanta', 'Johannesburg', 'Paris'];
+  if (!CITIES.includes(from)) CITIES.unshift(from);
+  const bg = sheet(`<h3>✈️ Detty Air</h3><p>Fly home in 3D. Walk the cabin, gist with passengers, visit the cockpit, chop jollof and land for December. Up to +90 🪙 a day.</p>
+    <div class="fr-lbl">Flying from</div><div class="fr-chips" id="flF">${CITIES.map(c => `<button data-c="${esc(c)}" class="${c === from ? 'on' : ''}">${esc(c)}</button>`).join('')}</div>
+    <div class="fr-lbl">Landing in</div><div class="fr-chips" id="flT">${['Lagos', 'Abuja', 'Port Harcourt'].map(c => `<button data-c="${c}" class="${c === to ? 'on' : ''}">${c}</button>`).join('')}</div>
+    <button class="btn btn-gold" id="flBoard">🎫 Board the plane</button>`);
+  const chips = (sel, fn) => bg.querySelectorAll(`${sel} [data-c]`).forEach(b => b.onclick = () => { bg.querySelectorAll(`${sel} [data-c]`).forEach(x => x.classList.toggle('on', x === b)); fn(b.dataset.c); beep('tap'); });
+  chips('#flF', c => from = c); chips('#flT', c => to = c);
+  bg.querySelector('#flBoard').onclick = () => { bg.remove(); boardFlight(from, to); };
+}
+function flightCard() {
+  return `<button class="sq-card fl-card-btn" id="flOpen"><span>✈️</span><span><b>Detty Air: fly home in 3D</b><small>Walk the cabin, visit the captain, chop jollof at 37,000 ft, clap when we land · up to +90 🪙</small></span><span class="go">›</span></button>`;
+}
+async function flightIntro(airport, city) {
+  const r = await boardFlight(city, airportCity(airport));
+  if (r) return;
   return new Promise(res => {
-    const ov = document.createElement('div'); ov.className = 'flight'; ov.innerHTML = `<div class="flight-sky"><span class="plane">✈️</span></div><div class="flight-t"><small>${esc(city)} → Naija</small><h2>Ladies and gentlemen, welcome to Nigeria 🇳🇬</h2><p>You just landed at ${esc(airport)}. IJGB status: activated 😎</p><button class="btn btn-gold">Collect my bags</button></div>`;
-    document.body.appendChild(ov); beep('win'); ov.querySelector('button').onclick = () => { ov.remove(); res(); };
+    const ov = document.createElement('div'); ov.className = 'flight'; ov.innerHTML = `<div class="flight-sky"><span class="plane">✈️</span></div><div class="flight-t"><button class="sheet-x" aria-label="Close">✕</button><small>${esc(city)} → Naija</small><h2>Ladies and gentlemen, welcome to Nigeria 🇳🇬</h2><p>You just landed at ${esc(airport)}. IJGB status: activated 😎</p><button class="btn btn-gold" id="flGo">Collect my bags</button></div>`;
+    document.body.appendChild(ov); beep('win'); ov.querySelector('#flGo').onclick = ov.querySelector('.sheet-x').onclick = () => { ov.remove(); res(); };
   });
 }
 let J3D = null;
@@ -1406,12 +1456,19 @@ async function driveLeg() {
 function townQuestion(leg, r) {
   const ov = document.createElement('div'); ov.className = 'overlay tq'; document.body.appendChild(ov); document.body.style.overflow = 'hidden';
   ov.innerHTML = `<div class="inner">
+    <button class="g-close tq-x" aria-label="Skip the question" title="Skip the question (counts as a wrong answer, the leg still counts)">✕</button>
     ${r.snap ? `<div class="dres-shot"><img src="${r.snap}" alt="Your car arriving at ${esc(leg.to.name)}"><div class="dres-stars">${r.crashes ? '' : '😎'}</div></div>` : ''}
     <h2 class="dres-h">Welcome to ${esc(leg.to.name)}! 🎉</h2>
     <p class="tq-sub">Before you rest, the gateman at ${esc(leg.to.name)} get one question for you 👀</p>
     <div class="card light tq-card"><b>${esc(leg.question.q)}</b><div class="tq-opts">${leg.question.options.map((o, i) => `<button class="opt" data-i="${i}">${esc(o)}</button>`).join('')}</div></div></div>`;
+  // ✕ skips the gateman's question: the leg is saved, the question counts as wrong.
+  ov.querySelector('.tq-x').onclick = async () => {
+    ov.querySelector('.tq-x').remove(); ov.querySelectorAll('[data-i]').forEach(x => x.disabled = true);
+    try { const d = await api('/api/journey/leg-done', { secs: r.secs, crashes: r.crashes, choice: -1 }); coinsTo(d.coins); legResult(ov, leg, r, d); }
+    catch (e) { toast(e.message); ov.remove(); document.body.style.overflow = ''; refresh(); }
+  };
   ov.querySelectorAll('[data-i]').forEach(b => b.onclick = async () => {
-    ov.querySelectorAll('[data-i]').forEach(x => x.disabled = true);
+    ov.querySelectorAll('[data-i]').forEach(x => x.disabled = true); const tx = ov.querySelector('.tq-x'); if (tx) tx.remove();
     let d; try { d = await api('/api/journey/leg-done', { secs: r.secs, crashes: r.crashes, choice: +b.dataset.i }); } catch (e) { toast(e.message); ov.remove(); document.body.style.overflow = ''; return refresh(); }
     coinsTo(d.coins);
     const right = leg.question.options.indexOf(d.correctAnswer);
@@ -1702,11 +1759,250 @@ function submitQuestion() {
   bg.querySelector('#sqGo').onclick = async () => { try { await api('/api/questions/submit', { c, q: bg.querySelector('#sqQ').value, o: [bg.querySelector('#sqA').value, ...[...bg.querySelectorAll('.sqW')].map(x => x.value)] }); bg.remove(); toast('Sent! We go check am. You get +50 🪙 when it goes live 🙏🏾'); } catch (e) { toast(e.message); } };
 }
 
+// ---------- Gist Partner (premium) ----------
+// Voice adapter: the Pidgin TTS model plugs in on the server (PIDGIN_TTS_URL). This plays what comes back,
+// one line after another. window.GistVoice is exposed so a client-side TTS could replace speak() later.
+const GistVoice = window.GistVoice = (() => {
+  let queue = [], playing = null, onState = () => {};
+  const cache = new Map();
+  async function fetchAudio(persona, text) {
+    const k = persona + '|' + text; if (cache.has(k)) return cache.get(k);
+    const r = await fetch('/api/gist/tts', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + S.token }, body: JSON.stringify({ persona, text }) });
+    if (!r.ok) { const j = await r.json().catch(() => ({})); throw Object.assign(new Error(j.error || 'Voice failed'), j); }
+    const url = URL.createObjectURL(await r.blob()); cache.set(k, url); return url;
+  }
+  async function next() {
+    if (playing || !queue.length) return; const item = queue.shift(); onState(item.i, true);
+    try { const url = await fetchAudio(item.persona, item.text); playing = new Audio(url); playing.onended = playing.onerror = () => { onState(item.i, false); playing = null; next(); }; await playing.play(); }
+    catch (e) { onState(item.i, false); playing = null; queue = []; if (!e.comingSoon) toast(e.message); }
+  }
+  return {
+    speak(persona, text, i) { queue.push({ persona, text, i }); next(); },
+    stop() { queue = []; if (playing) { playing.pause(); playing = null; } },
+    onState(fn) { onState = fn; },
+  };
+})();
+
+let GC = null; // gist config cache
+async function gistConfig(force) { if (!GC || force) GC = await api('/api/gist/config'); return GC; }
+// ---------- Gist Partner demo: a looping, captioned "video" of how a gist plays out ----------
+// Built from the real gist screens so it always matches the product. Sample player and friend names, clearly labelled.
+const DEMO = [
+  { at: 0, scene: 'pick' },
+  { at: 1.6, tap: 'tunde' },
+  { at: 2.6, scene: 'room' },
+  { at: 3.0, typing: 1 },
+  { at: 4.0, line: 'Oya oya oya, enter enter! I get gist for you, Tolu!', dur: 3.2 },
+  { at: 7.6, typing: 1 },
+  { at: 8.4, line: 'Chidi don pass you today with 40 points. 620 to your 580. Ehn, you dey sleep?', dur: 4.4 },
+  { at: 13.2, chips: 1 },
+  { at: 14.4, tapChip: 0, me: 'Ehen?! 👀' },
+  { at: 15.2, typing: 1 },
+  { at: 16.0, line: 'Your streak na 6 days. You never miss since Day 1. Correct person!', dur: 3.8 },
+  { at: 20.2, typing: 1 },
+  { at: 21.0, line: 'Owambe Night Live go start 8:30pm. 20,000 coins dey the pot. No late o!', dur: 3.8 },
+  { at: 25.2, scene: 'end' },
+  { at: 30.0, loop: 1 },
+];
+const DEMO_LEN = 30;
+function demoPlayer(host, { compact = false } = {}) {
+  host.innerHTML = `<div class="gd ${compact ? 'compact' : ''}" aria-label="Demo: how Gist Partner works">
+    <div class="gd-bars">${[0, 1, 2, 3].map(() => '<i><b></b></i>').join('')}</div>
+    <div class="gd-top"><span class="gd-badge">● DEMO</span><button class="gd-pp" aria-label="Pause demo">❚❚</button></div>
+    <div class="gd-phone"><div class="gd-notch"></div><div class="gd-screen"></div><span class="gd-finger"></span></div>
+    ${compact ? '' : '<div class="gd-cap" aria-live="off"></div>'}
+    <p class="gd-note">Sample player. Your gist uses your real game.</p></div>`;
+  const root = host.querySelector('.gd'), scr = root.querySelector('.gd-screen'), finger = root.querySelector('.gd-finger'), cap = root.querySelector('.gd-cap'), pp = root.querySelector('.gd-pp');
+  const bars = [...root.querySelectorAll('.gd-bars b')], cuts = [0, 2.6, 13.2, 25.2, DEMO_LEN];
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let t = 0, i = 0, playing = !still, visible = true, raf = 0, last = performance.now(), speaking = null;
+  const feed = () => scr.querySelector('.gd-feed');
+  const scroll = () => { const f = feed(); if (f) f.scrollTop = f.scrollHeight; };
+  const tapAt = (el) => { if (!el) return; const r = el.getBoundingClientRect(), p = root.getBoundingClientRect(); finger.style.left = (r.left - p.left + r.width * .6) + 'px'; finger.style.top = (r.top - p.top + r.height * .55) + 'px'; finger.classList.remove('tap'); void finger.offsetWidth; finger.classList.add('tap'); el.classList.add('pressed'); };
+  function scene(n) {
+    finger.classList.remove('tap');
+    if (n === 'pick') scr.innerHTML = `<div class="gd-h"><b>🎙️ Gist Partner</b></div><div class="gd-list">${[['tunde', '🚐', 'Tunde Conductor', 'Knows everybody\'s business', '#F5B83D', 'FREE'], ['basira', '🍲', 'Iya Basira', 'Mama put queen', '#E5483C', ''], ['ngozi', '👒', 'Aunty Ngozi', 'Very concerned about your life', '#8E5BD6', '']].map(([id, e, n2, s, c, tag]) => `<div class="gd-row" data-id="${id}" style="--c:${c}"><span class="gd-av">${e}</span><span><b>${n2}${tag ? ' <em>FREE</em>' : ''}</b><small>${s}</small></span></div>`).join('')}</div>`;
+    if (n === 'room') scr.innerHTML = `<div class="gd-h"><b>🚐 Tunde Conductor</b><span class="gd-live">● LIVE GIST</span></div><div class="gd-feed"></div><div class="gd-chips"></div>`;
+    if (n === 'end') scr.innerHTML = `<div class="gd-end"><span>🎙️</span><b>Your gist. Your game.<br>Every day.</b><small>Real gist about your streak, your friends and tonight's show</small><em>6 partners · voice notes in Naija pidgin</em></div>`;
+  }
+  function apply(ev) {
+    if (ev.scene) scene(ev.scene);
+    if (ev.tap) tapAt(scr.querySelector(`[data-id="${ev.tap}"]`));
+    if (ev.typing) { const d = document.createElement('div'); d.className = 'gd-b typing'; d.innerHTML = '<span class="gd-av">🚐</span><p><i></i><i></i><i></i></p>'; feed().appendChild(d); scroll(); }
+    if (ev.line) {
+      const ty = scr.querySelector('.gd-b.typing'); if (ty) ty.remove();
+      const words = ev.line.split(' '), d = document.createElement('div'); d.className = 'gd-b on';
+      d.innerHTML = `<span class="gd-av">🚐</span><div><p>${words.map(w => `<span>${esc(w)}</span>`).join(' ')}</p><span class="gd-vn"><span class="gd-play">▶</span><span class="gd-wave">${Array.from({ length: 18 }, (_, k) => `<i style="--h:${30 + ((k * 37) % 60)}%;--d:${(k % 6) * .08}s"></i>`).join('')}</span><small>0:0${Math.round(ev.dur)}</small></span></div>`;
+      feed().appendChild(d); scroll();
+      if (speaking) speaking.el.classList.remove('on');
+      speaking = { el: d, words: [...d.querySelectorAll('p span')], from: ev.at, dur: ev.dur, text: ev.line };
+      if (cap) cap.innerHTML = `<b>Tunde:</b> ${words.map(w => `<span>${esc(w)}</span>`).join(' ')}`;
+    }
+    if (ev.chips) { const c = scr.querySelector('.gd-chips'); c.innerHTML = ['Ehen?! 👀', 'Tell me more', 'Who else?'].map(x => `<span>${x}</span>`).join(''); }
+    if (ev.tapChip != null) { const ch = scr.querySelectorAll('.gd-chips span')[ev.tapChip]; tapAt(ch); setTimeout(() => { if (!document.body.contains(root)) return; scr.querySelector('.gd-chips').innerHTML = ''; const m = document.createElement('div'); m.className = 'gd-b me'; m.textContent = ev.me; feed().appendChild(m); scroll(); }, 380); }
+    if (ev.scene === 'end') { if (speaking) speaking.el.classList.remove('on'); speaking = null; if (cap) cap.innerHTML = ''; }
+  }
+  function reset() { t = 0; i = 0; speaking = null; if (cap) cap.innerHTML = ''; }
+  function frame(now) {
+    raf = requestAnimationFrame(frame);
+    if (!document.body.contains(root)) { cancelAnimationFrame(raf); obs.disconnect(); return; }
+    const dt = Math.min(.1, (now - last) / 1000); last = now;
+    if (!playing || !visible) return;
+    t += dt;
+    while (i < DEMO.length && DEMO[i].at <= t) { const ev = DEMO[i++]; if (ev.loop) { reset(); scene('pick'); return; } apply(ev); }
+    if (speaking) { const k = clamp01((t - speaking.from) / speaking.dur), n = Math.floor(k * speaking.words.length); speaking.words.forEach((w, j) => w.classList.toggle('said', j < n)); if (cap) cap.querySelectorAll('span').forEach((w, j) => w.classList.toggle('said', j < n)); if (k >= 1) { speaking.el.classList.remove('on'); speaking = null; } }
+    bars.forEach((b, j) => { b.style.width = (clamp01((t - cuts[j]) / (cuts[j + 1] - cuts[j])) * 100) + '%'; });
+  }
+  const clamp01 = (v) => Math.max(0, Math.min(1, v));
+  const obs = new IntersectionObserver((es) => { visible = es[0].isIntersecting; }, { threshold: .25 }); obs.observe(root);
+  pp.onclick = (e) => { e.stopPropagation(); playing = !playing; pp.textContent = playing ? '❚❚' : '▶'; pp.setAttribute('aria-label', playing ? 'Pause demo' : 'Play demo'); root.classList.toggle('paused', !playing); if (playing) track('gist_demo_play'); };
+  root.addEventListener('click', (e) => { if (!compact) { e.stopPropagation(); pp.click(); } });
+  scene('pick');
+  if (still) { // reduced motion: show one finished frame of the conversation, with a play button
+    t = 21.5; while (i < DEMO.length && DEMO[i].at <= t) apply(DEMO[i++]); if (speaking) { speaking.words.forEach(w => w.classList.add('said')); speaking.el.classList.remove('on'); speaking = null; }
+    pp.textContent = '▶'; root.classList.add('paused'); bars.forEach((b, j) => { b.style.width = (clamp01((t - cuts[j]) / (cuts[j + 1] - cuts[j])) * 100) + '%'; });
+  }
+  raf = requestAnimationFrame(frame);
+}
+function gistCard() {
+  return `<section class="gist-hero" id="gistOpen" role="button" tabindex="0" aria-label="Open Gist Partner">
+    <div class="gh-demo" id="ghDemo"></div>
+    <div class="gh-copy"><small>🎙️ Gist Partner <em class="prem-tag">PREMIUM</em></small><h2>Who don pass you? Wetin happen today?</h2>
+      <p>A Naija character gists you about your real game: who passed you, your streak, tonight's show. Like a voice note from your padi.</p>
+      <ol class="gh-steps"><li><b>1</b>Pick your partner</li><li><b>2</b>They read your game</li><li><b>3</b>Hear the gist</li></ol>
+      <span class="btn btn-gold">Hear today's gist</span><small class="gh-free">Tunde Conductor is free once a day</small></div></section>`;
+}
+async function gistHub() {
+  let C; try { C = await gistConfig(true); } catch (e) { return toast(e.message); }
+  const ov = document.createElement('div'); ov.className = 'overlay gist'; document.body.appendChild(ov); document.body.style.overflow = 'hidden';
+  const close = () => { GistVoice.stop(); ov.remove(); document.body.style.overflow = ''; };
+  track('gist_open');
+  const dots = (n) => `<span class="gdots" aria-label="${n} out of 5">${[1, 2, 3, 4, 5].map(k => `<i class="${k <= n ? 'on' : ''}"></i>`).join('')}</span>`;
+  function home() {
+    GistVoice.stop();
+    ov.innerHTML = `<div class="inner"><div class="g-top"><button class="g-close" aria-label="Close">✕</button><b class="gist-title">🎙️ Gist Partner</b>${C.premium.active ? '<em class="prem-tag on">PREMIUM</em>' : '<button class="btn btn-gold btn-sm" id="gpUp">Go premium</button>'}</div>
+      <div class="gist-demo-wrap" id="gpDemo"></div>
+      <p class="gist-lede">Your partner gists you about what is really happening: who passed you, your streak, tonight's show, your journey home. ${C.premium.active ? 'Unlimited gist with everybody.' : C.freeLeft ? 'You get 1 free gist with Tunde today.' : 'Your free gist for today don finish. Come back tomorrow or go premium.'}</p>
+      <div class="gist-trust"><span>✅ Never makes things up: every line comes from your real game</span><span>🔒 Only you hear your gist</span></div>
+      <div class="section-title gp-h"><h2>Pick your partner</h2></div>
+      <div class="gp-list">${C.personas.map(p => { const lock = !C.premium.active && !p.free; return `<button class="gp" data-p="${p.id}" style="--c:${p.color}">
+        <span class="gp-av">${p.emoji}</span><span class="gp-main"><b>${esc(p.name)} ${p.free ? '<em class="free-tag">FREE</em>' : lock ? '<em class="prem-tag">🔒 PREMIUM</em>' : ''}</b><small>${esc(p.tagline)}</small>
+        <span class="gp-traits">${p.traits.map(t => `<i>${esc(t)}</i>`).join('')}</span>
+        <span class="gp-meta"><span>Energy <b>${dots(p.energy)}</b></span><span>Pidgin <b>${dots(p.pidgin)}</b></span><span>🗣️ ${esc(p.voice.accent)}</span></span></span></button>`; }).join('')}</div>
+      <p class="gist-foot">${C.voice ? '🔊 Voice gist is live for premium.' : '🔊 Voice gist in real Naija pidgin is coming soon. Premium members get it first.'}</p></div>`;
+    ov.querySelector('.g-close').onclick = close;
+    demoPlayer(ov.querySelector('#gpDemo'));
+    const up = ov.querySelector('#gpUp'); if (up) up.onclick = () => premiumSheet();
+    ov.querySelectorAll('[data-p]').forEach(b => b.onclick = () => profile(C.personas.find(p => p.id === b.dataset.p)));
+  }
+  function profile(p) {
+    const lock = !C.premium.active && !p.free, out = !C.premium.active && p.free && !C.freeLeft;
+    const bg = sheet(`<div class="gpp" style="--c:${p.color}"><span class="gp-av big">${p.emoji}</span><h3>${esc(p.name)}</h3><small class="gpp-o">${esc(p.origin)} · ${esc(p.age)}</small>
+      <p>${esc(p.bio)}</p>
+      <div class="gpp-grid"><div><small>Personality</small><span class="gp-traits">${p.traits.map(t => `<i>${esc(t)}</i>`).join('')}</span></div>
+      <div><small>Gists you about</small><span class="gp-traits">${p.topics.map(t => `<i>${esc(t)}</i>`).join('')}</span></div>
+      <div><small>Voice</small><span>${esc(p.voice.gender)}, ${esc(p.voice.age)} · ${esc(p.voice.accent)} · ${p.voice.style.map(esc).join(', ')}</span></div>
+      <div><small>Energy · Pidgin</small><span>${dots(p.energy)} · ${dots(p.pidgin)}</span></div></div>
+      ${lock ? `<button class="btn btn-gold" id="gpGo">🔒 Unlock ${esc(p.name.split(' ')[0])} with premium</button>` : out ? `<button class="btn btn-gold" id="gpGo">Free gist used today · Go premium</button>` : `<button class="btn btn-gold" id="gpGo">🎙️ Gist me, ${esc(p.name.split(' ')[0])}!</button>`}</div>`);
+    bg.querySelector('#gpGo').onclick = () => { bg.remove(); if (lock || out) premiumSheet(p); else room(p); };
+  }
+  async function room(p) {
+    let used = 0, all = [];
+    ov.innerHTML = `<div class="inner gr" style="--c:${p.color}"><div class="g-top"><button class="pt-back gr-back">‹ Partners</button><b class="gist-title">${p.emoji} ${esc(p.name)}</b><button class="g-close" aria-label="Close">✕</button></div>
+      <div class="gr-feed" id="grFeed" aria-live="polite"></div><div class="gr-acts" id="grActs"></div></div>`;
+    ov.querySelector('.g-close').onclick = close; ov.querySelector('.gr-back').onclick = home;
+    const feed = ov.querySelector('#grFeed'), acts = ov.querySelector('#grActs');
+    GistVoice.onState((i, on) => { const b = feed.querySelector(`[data-l="${i}"]`); if (b) b.classList.toggle('speaking', on); });
+    const typing = () => { const d = document.createElement('div'); d.className = 'gr-b them typing'; d.innerHTML = `<span class="gr-av">${p.emoji}</span><span class="gr-t"><i></i><i></i><i></i></span>`; feed.appendChild(d); feed.scrollTop = feed.scrollHeight; return d; };
+    const mine = (t) => { const d = document.createElement('div'); d.className = 'gr-b me'; d.textContent = t; feed.appendChild(d); feed.scrollTop = feed.scrollHeight; };
+    async function load(more) {
+      acts.innerHTML = ''; const ty = typing(); let r;
+      try { [r] = await Promise.all([api('/api/gist/session', { persona: p.id, more: more ? used : 0 }), new Promise(x => setTimeout(x, 700))]); }
+      catch (e) { ty.remove(); if (e.message && /premium/i.test(e.message)) return premiumSheet(p); toast(e.message); return replies(false); }
+      ty.remove(); used = r.used; GC = null;
+      for (const l of r.lines) {
+        const i = all.length; all.push(l.t);
+        const ty2 = typing(); await new Promise(x => setTimeout(x, Math.min(1400, 350 + l.t.length * 14))); ty2.remove();
+        const d = document.createElement('div'); d.className = 'gr-b them'; d.dataset.l = i;
+        d.innerHTML = `<span class="gr-av">${p.emoji}</span><span class="gr-t">${esc(l.t)}</span>${r.premium ? `<button class="gr-play" aria-label="Play this line" ${r.voice ? '' : 'disabled title="Voice coming soon"'}>🔊</button>` : ''}`;
+        feed.appendChild(d); feed.scrollTop = feed.scrollHeight; beep('tap');
+        const pb = d.querySelector('.gr-play'); if (pb && r.voice) pb.onclick = () => GistVoice.speak(p.id, l.t, i);
+        if (r.voice && ls.get('gistAuto', true)) GistVoice.speak(p.id, l.t, i);
+      }
+      if (r.locked) { const d = document.createElement('div'); d.className = 'gr-lock'; d.innerHTML = `<b>🔒 ${p.emoji} ${esc(p.name.split(' ')[0])} still get ${r.locked} more gist for you…</b><small>Premium unlocks the full gist, every partner, and their voice.</small><button class="btn btn-gold btn-sm">See premium</button>`; d.querySelector('button').onclick = () => premiumSheet(p); feed.appendChild(d); feed.scrollTop = feed.scrollHeight; }
+      replies(r.hasMore);
+    }
+    function replies(hasMore) {
+      acts.innerHTML = hasMore ? C.replies.map(x => `<button class="gr-r">${esc(x)}</button>`).join('') : `<button class="gr-r" id="grShare">${IC.wa} Share this gist</button><button class="gr-r" id="grBack">‹ Other partners</button>`;
+      acts.querySelectorAll('.gr-r:not([id])').forEach(b => b.onclick = () => { mine(b.textContent); load(true); });
+      const sh = acts.querySelector('#grShare'); if (sh) sh.onclick = () => { const txt = `${p.emoji} ${p.name} just gisted me on Detty December 😂\n\n"${all.slice(1, 3).join(' ')}"\n\nCome hear your own gist: ${location.origin}/?ref=${S.me.user.refCode}`; track('share', { channel: 'gist', persona: p.id }); if (navigator.share) navigator.share({ text: txt }).catch(() => {}); else window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank'); };
+      const bk = acts.querySelector('#grBack'); if (bk) bk.onclick = home;
+    }
+    load(false);
+  }
+  home();
+}
+// ---------- Christmas Drip Booth (premium clothe swap) ----------
+let SWAP = null, SWAPCAT = null, swapDemoStop = null;
+const loadSwap = async () => (SWAP = SWAP || await import('/swap.js'));
+function swapCard() {
+  return `<section class="gist-hero sw-hero" id="swOpen" role="button" tabindex="0" aria-label="Open Christmas Drip Booth">
+    <div class="gh-demo" id="swDemo"></div>
+    <div class="gh-copy"><small>👗 Drip Booth <em class="prem-tag">PREMIUM</em></small><h2>Wear agbada for Lagos. From your room.</h2>
+      <p>Snap a selfie, pick a Christmas outfit and a December location. Your status picture, ready in seconds.</p>
+      <ol class="gh-steps"><li><b>1</b>Snap or upload</li><li><b>2</b>Pick your outfit</li><li><b>3</b>Pick your location</li></ol>
+      <span class="btn btn-gold">Try it on</span><small class="gh-free">2 outfits + 2 locations free</small></div></section>`;
+}
+async function swapCardInit() {
+  const host = $('#swDemo'), card = $('#swOpen'); if (!card) return;
+  const open = async () => { try { const m = await loadSwap(); m.openSwap({ api, toast, track, beep, confetti, sheet, premiumSheet, redeemSheet, token: S.token, refCode: S.me.user.refCode }); } catch (e) { console.error(e); toast('The Drip Booth no fit open on this phone 😅'); } };
+  card.onclick = open; card.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } };
+  try { const m = await loadSwap(); if (!SWAPCAT) SWAPCAT = await api('/api/swap/config'); if (swapDemoStop) swapDemoStop(); if (host.isConnected) swapDemoStop = m.swapDemo(host, SWAPCAT); } catch (e) { console.error(e); }
+}
+// Premium unlock code (testing, gifts, promos). onDone runs after premium switches on.
+function redeemSheet(onDone) {
+  const bg = sheet(`<div class="swx-sh rd"><span class="swx-sh-ic">🎟️</span><h3>Have a code?</h3><p>Enter your premium code to unlock everything.</p>
+    <input class="rd-in" id="rdIn" placeholder="DETTY-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="40">
+    <p class="rd-err" id="rdErr" hidden></p>
+    <button class="btn btn-gold" id="rdGo">Unlock premium</button></div>`);
+  const inp = bg.querySelector('#rdIn'), err = bg.querySelector('#rdErr'), go = bg.querySelector('#rdGo');
+  setTimeout(() => inp.focus(), 250);
+  const submit = async () => {
+    const code = inp.value.trim(); if (!code) return inp.focus();
+    go.disabled = true; go.textContent = 'Checking…'; err.hidden = true;
+    try {
+      const r = await api('/api/premium/redeem', { code }); GC = null; SWAPCAT = null; beep('win'); confetti(90);
+      bg.querySelector('.rd').innerHTML = `<div class="swx-done"><span>👑</span><h3>You're Premium!</h3><p>${r.days} days of everything: every gist partner, every Drip Booth look in HD, and realistic AI when it's on.</p><button class="btn btn-gold" id="rdOk">Let's go</button></div>`;
+      bg.querySelector('#rdOk').onclick = () => bg.remove();
+      refresh(); if (onDone) onDone();
+    } catch (e) { err.textContent = e.message; err.hidden = false; go.disabled = false; go.textContent = 'Unlock premium'; inp.select(); }
+  };
+  go.onclick = submit; inp.onkeydown = (e) => { if (e.key === 'Enter') submit(); };
+}
+async function premiumSheet(p) {
+  let C; try { C = await gistConfig(); } catch (e) { return toast(e.message); }
+  const from = typeof p === 'string' ? p : p ? p.id : 'hub'; if (typeof p === 'string') p = null;
+  track('premium_view', { from });
+  const bg = sheet(`<div class="prem"><span class="prem-ic">${from === 'swap' ? '👗' : '🎙️'}</span><h3>Detty Premium</h3><p>${from === 'swap' ? 'Every outfit, every location, HD pictures with no watermark. Plus your own gist partner.' : `Your own gist partner for December. ${p ? `${esc(p.name)} is waiting for you.` : ''}`}</p>
+    <ul class="prem-list"><li>🗣️ <b>All 6 gist partners</b><small>Iya Basira, Aunty Ngozi, Amaka IJGB, Mallam Sani, Chuks Cashout and Tunde</small></li>
+    <li>♾️ <b>Unlimited gist, all day</b><small>Ask "Ehen?!" and they keep going</small></li>
+    <li>🔊 <b>Voice notes in real Naija pidgin</b><small>${C.voice ? 'Live now' : 'Coming soon. Premium members get it first'}</small></li>
+    <li>👗 <b>Christmas Drip Booth, all of it</b><small>All 8 outfits and 8 locations, HD, no watermark. Realistic AI swap first when it lands</small></li>
+    <li>🧠 <b>Fresh gist every time</b><small>About your friends, your streak, your journey and tonight's show</small></li></ul>
+    <div class="prem-plans">${C.plans.map(pl => `<button class="prem-plan ${pl.best ? 'best' : ''}" data-pl="${pl.id}">${pl.best ? '<em>BEST VALUE</em>' : ''}<b>${esc(pl.name)}</b><span>₦${pl.price.toLocaleString()}</span><small>${esc(pl.blurb)}</small>${C.interested.includes(pl.id) ? '<i>✓ You are on the list</i>' : ''}</button>`).join('')}</div>
+    <p class="prem-note">Payments open soon. Tap a plan to join the waiting list and we'll tell you first.</p>
+    <button class="rd-link" id="prCode">🎟️ Have a code? Enter it</button></div>`);
+  bg.querySelector('#prCode').onclick = () => { bg.remove(); redeemSheet(() => { const g = document.querySelector('.overlay.gist'); if (g) { GistVoice.stop(); g.remove(); document.body.style.overflow = ''; gistHub(); } }); };
+  bg.querySelectorAll('[data-pl]').forEach(b => b.onclick = async () => { try { await api('/api/premium/interest', { plan: b.dataset.pl }); GC = null; beep('win'); bg.remove(); toast("You're on the list! We'll tell you the moment premium opens 🎙️"); } catch (e) { toast(e.message); } });
+}
+
 // ---------- the Party tab ----------
 async function viewParty() {
   const m = S.me;
   $('#view').innerHTML = `<div class="wrap">
     ${liveCard(m) || `<div class="livecard off"><span class="lv-ic">🎤</span><span><small>Every night at 8:30pm</small><b>Owambe Night Live</b><em>The show for today don end. Come back tomorrow, join early!</em></span></div>`}
+    ${gistCard()}
+    ${swapCard()}
     <section class="pt-hero"><div><small>🪩 Party Mode</small><h2>Everybody don gather for December?</h2><p>One phone, the whole room. Aunty Interrogation, Act Am! and Who Go Pass? Works without data.</p></div><button class="btn btn-gold" id="ptOpen">Start the party</button></section>
     <div class="section-title"><h2>How well do you know me?</h2><span>Your friends guess</span></div>
     <div class="card km-card" id="kmCard"><p>Loading…</p></div>
@@ -1714,6 +2010,7 @@ async function viewParty() {
   </div>`;
   if ($('#liveBtn')) $('#liveBtn').onclick = openLive;
   $('#ptOpen').onclick = partyHub; $('#sqOpen').onclick = submitQuestion;
+  swapCardInit(); $('#gistOpen').onclick = gistHub; demoPlayer($('#ghDemo'), { compact: true }); $('#gistOpen').onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); gistHub(); } };
   try {
     const K = await api('/api/knowme');
     const card = $('#kmCard'); if (!card) return;

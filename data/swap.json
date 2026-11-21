@@ -1,0 +1,39 @@
+{
+  "_readme": "Christmas Drip Booth. Outfits and locations for the clothe swap. 'free': true means free players can use it. 'prompt' is what the AI image model (OpenAI, see OPENAI_API_KEY in README) is told to dress the player in, and where to place them. Be specific about fabric, colour and light; it makes the pictures beautiful. The drawn Studio versions live in public/swap.js, keyed by id. Edit freely and restart.",
+  "outfits": [
+    { "id": "sweater", "name": "IJGB Christmas Sweater", "emoji": "🧶", "free": true, "blurb": "The knit wey dem carry come from abroad",
+      "prompt": "a cosy, chunky hand-knitted red Christmas sweater with crisp white Fair Isle bands of snowflakes and zigzags, ribbed crew neck and cuffs, and the words DETTY 26 knitted across the chest in white" },
+    { "id": "santa", "name": "Father Christmas", "emoji": "🎅🏾", "free": true, "blurb": "Red suit, white fur, Santa hat",
+      "prompt": "a luxurious deep-red velvet Father Christmas suit with thick fluffy white fur trim down the front and on the collar, a wide black leather belt with a polished gold buckle, and a matching red velvet Santa hat with a white fur band and pom-pom (no fake beard)" },
+    { "id": "agbada", "name": "Royal Agbada", "emoji": "👑", "free": false, "blurb": "Wide agbada with gold embroidery and fila",
+      "prompt": "a majestic, flowing royal-blue Yoruba agbada in rich damask fabric with dense hand-stitched gold embroidery around a deep V neckline, worn over a matching buba, with a matching royal-blue fila cap with a gold band, worn proudly like a chief at an owambe" },
+    { "id": "asoebi", "name": "Aso-ebi and Gele", "emoji": "💃🏾", "free": false, "blurb": "Owambe lace with a big gold gele",
+      "prompt": "an elegant coral and gold French-lace owambe aso-ebi blouse with scattered sequins and beaded neckline, and a large, sculpted, perfectly pleated metallic-gold gele head tie standing tall like a crown, with tasteful gold earrings" },
+    { "id": "ankara", "name": "Ankara Blazer", "emoji": "🕺🏾", "free": false, "blurb": "Sharp ankara blazer, white shirt, bow tie",
+      "prompt": "a sharply tailored slim-fit blazer in bold orange, teal and yellow Ankara wax print with black satin lapels, a crisp white shirt, a black silk bow tie and a gold pocket square" },
+    { "id": "senator", "name": "Black Senator", "emoji": "🖤", "free": false, "blurb": "Clean senator kaftan with gold trim",
+      "prompt": "a sleek, perfectly pressed black Nigerian senator kaftan with a mandarin collar, fine gold embroidery running down the front placket and a small chest pocket, clean and expensive-looking" },
+    { "id": "gown", "name": "Ankara Gown", "emoji": "👗", "free": false, "blurb": "Off-shoulder print gown with puff sleeves",
+      "prompt": "a glamorous off-shoulder Ankara print gown in magenta, gold and emerald green with dramatic structured puff sleeves, a fitted bodice and statement gold jewellery" },
+    { "id": "jersey", "name": "Naija Jersey", "emoji": "🦅", "free": false, "blurb": "Green and white, for the Detty Cup",
+      "prompt": "a modern green and white Nigerian football style jersey with a bold chevron pattern across the chest and the number 26, breathable sports fabric, with no real brand logos or crests" }
+  ],
+  "locations": [
+    { "id": "tree", "name": "Christmas Tree Plaza", "emoji": "🎄", "free": true, "blurb": "The big tree, lit up at night",
+      "prompt": "standing in front of a huge, beautifully lit Christmas tree in a city plaza at night, covered in warm golden fairy lights and red ornaments, with dreamy bokeh lights and wrapped gifts around its base" },
+    { "id": "studio", "name": "Detty Studio", "emoji": "✨", "free": true, "blurb": "Green and gold studio shoot",
+      "prompt": "a professional fashion photo studio with a deep emerald-green seamless backdrop, soft gold bokeh lights and subtle gold confetti, lit like a magazine cover shoot" },
+    { "id": "lagos", "name": "Lagos Lagoon by Night", "emoji": "🌉", "free": false, "blurb": "Bridge lights and city skyline",
+      "prompt": "the Lagos lagoon waterfront at night, with a long illuminated bridge and the glittering Lagos city skyline reflected in the dark water, warm city lights glowing, cinematic and glamorous" },
+    { "id": "beach", "name": "Beach at Sunset", "emoji": "🏖️", "free": false, "blurb": "Palm trees and golden hour",
+      "prompt": "a beautiful Lagos beach at golden-hour sunset, with leaning palm trees, gentle waves and a glowing orange and pink sky, warm sunlight on the face" },
+    { "id": "owambe", "name": "Owambe Hall", "emoji": "🥂", "free": false, "blurb": "Chandeliers, drapes and fairy lights",
+      "prompt": "a glamorous Nigerian owambe party hall with draped gold and ivory fabric ceilings, sparkling crystal chandeliers, curtains of fairy lights and elegantly dressed round tables, luxurious and festive" },
+    { "id": "village", "name": "Village Christmas", "emoji": "🏡", "free": false, "blurb": "Home for Christmas, red earth and mango tree",
+      "prompt": "a warm Nigerian village compound on Christmas day in soft afternoon light, red earth, a cream bungalow with a zinc roof, a big leafy mango tree, colourful Christmas bunting and a happy homecoming feeling" },
+    { "id": "airport", "name": "Welcome Home Arrival", "emoji": "🛬", "free": false, "blurb": "Arrival hall, plane outside",
+      "prompt": "a bright, modern airport arrival hall with tall glass windows, a plane visible on the tarmac outside, and a green WELCOME HOME sign overhead, the joyful moment of landing home for December" },
+    { "id": "snow", "name": "Winter Abroad", "emoji": "❄️", "free": false, "blurb": "Snowy street, for the IJGB story",
+      "prompt": "a snowy European city street at dusk with gently falling snow, warm glowing lamp posts and lit shop windows, magical winter atmosphere" }
+  ]
+}

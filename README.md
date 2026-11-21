@@ -98,3 +98,40 @@ public/sw.js, manifest.json, icons, og.png   installable app + WhatsApp link pre
 - **AI drafts (optional):** set `ANTHROPIC_API_KEY` (and optionally `AI_MODEL`) on the server, then Admin → Questions → "Draft 10 with AI". Drafts never go live until you approve them. Check every fact first.
 - **How well do you know me?:** players build a 5-question quiz about themselves and share `/?know=CODE`. Friends' scores make a "who knows me best" board.
 - **Party Mode:** pass-the-phone games for the living room that need no data: Aunty Interrogation, Act Am! (charades) and Who Go Pass?
+
+## Gist Partner (premium)
+
+Party tab → **Gist Partner**. Six characters (Tunde Conductor, Iya Basira, Aunty Ngozi, Amaka IJGB, Mallam Sani, Chuks Cashout) gist each player about what is really happening to them on the app: their streak, who passed them today, their rank, Drive of the Day, their journey home, tonight's show, unopened gifts, their squad and who knows them best. Nothing is made up; every line comes from the player's real data.
+
+- **Cast:** `data/gist.json`. Each persona has a bio, traits, topics, energy and pidgin level, openers, reactions, closers and a `voice` block for the TTS model. Edit and restart.
+- **Free vs premium:** free players get Tunde once a day, first 3 lines, text only. Premium unlocks every partner, unlimited "Ehen?! Tell me more", and voice.
+- **Writing:** with `ANTHROPIC_API_KEY` set, premium gists are written in character by Claude from the real facts (it is told never to invent anything). Without a key, a built-in writer mixes the persona's lines around the same facts.
+- **Pidgin voice (plug-in):** set `PIDGIN_TTS_URL` (and `PIDGIN_TTS_KEY` if it needs one). The server POSTs `{ text, voice: { voiceId, gender, age, pace, pitch, accent, style }, persona, format: "mp3" }` with `Authorization: Bearer <PIDGIN_TTS_KEY>` and plays back the audio it returns. Nothing else changes: the play buttons and auto-play switch on by themselves.
+- **Payments:** not wired yet. The premium screen collects a waiting list (`premium_interest` table, visible in the admin live feed). When you add Paystack or Flutterwave, call `grantPremium(userId, planId)` (returned from `gist.js`) in the payment webhook. Plans and prices are in `data/gist.json`.
+- **Admin:** open a player → **Premium** → give 7 days, the December pass, or remove it.
+- **Premium codes (testing, gifts, promos):** players tap **Have a code?** on any premium screen. Set `PREMIUM_CODES` (for example `DETTY-ABC123:30`, comma-separated, `:days` optional, default 30, unlimited uses) or create codes in admin → **Settings → Premium codes** with a day count, a use limit and a note. Each player can use a code once; 8 wrong tries locks them out for an hour.
+
+| Variable | What it does | Default |
+|---|---|---|
+| `PREMIUM_CODES` | Premium unlock codes, e.g. `DETTY-ABC123:30,VIPGIFT:7` | none |
+| `PIDGIN_TTS_URL` | Your Pidgin text-to-speech endpoint | off (shows "coming soon") |
+| `PIDGIN_TTS_KEY` | Bearer token sent to the TTS endpoint | none |
+
+## Christmas Drip Booth (premium)
+
+Party tab → **Drip Booth**. The player takes a selfie (live camera with a face oval and a 3-second timer) or uploads a photo, fits their face in the oval, then picks a Christmas outfit and a December location. They save or share the picture straight to WhatsApp or their status.
+
+- **Catalogue:** `data/swap.json` has 8 outfits (IJGB sweater, Father Christmas, Royal Agbada, Aso-ebi and Gele, Ankara Blazer, Black Senator, Ankara Gown, Naija Jersey) and 8 locations (Christmas Tree Plaza, Detty Studio, Lagos Lagoon, Beach at Sunset, Owambe Hall, Village Christmas, Welcome Home Arrival, Winter Abroad). The drawings for each id are in `public/swap.js`.
+- **Studio mode (live now):** the phone draws the whole picture itself, matching neck colour to the face and tinting the light to the location. The photo never leaves the phone.
+- **Free vs premium:** free players get 2 outfits and 2 locations, saved at 720×900 with the Detty mark. They can preview everything else with a "PREMIUM PREVIEW" watermark. Premium gets everything at 1080×1350 and can turn the mark off.
+- **Realistic AI swap (premium, OpenAI):** set `OPENAI_API_KEY` and the **Make it realistic** button goes live. The server sends the player's selfie to OpenAI's Images edit endpoint (`gpt-image-1`, `input_fidelity: high` so the face stays theirs, portrait 1024×1536) with a prompt built from the outfit and location in `data/swap.json`. The phone crops the result to 4:5 and adds the location label and Detty mark. Players see a consent popup the first time (their photo goes to OpenAI, we never store it). Limit: 10 a day per premium player, one at a time; failed renders don't count. Safety refusals, timeouts and rate limits show friendly messages. Prefer another provider? Set `SWAP_API_URL` instead (see the comment at the top of `swap.js`).
+- **Stats:** `GET /api/admin/swap` returns counts by outfit and location. Events show in the admin live feed.
+
+| Variable | What it does | Default |
+|---|---|---|
+| `OPENAI_API_KEY` | Turns on the realistic AI swap (OpenAI) | off (shows "coming soon") |
+| `OPENAI_IMAGE_MODEL` | OpenAI image model | `gpt-image-1` |
+| `OPENAI_IMAGE_QUALITY` | `low`, `medium` or `high` (higher costs more and is slower) | `medium` |
+| `OPENAI_BASE_URL` | Only if you use a proxy | `https://api.openai.com/v1` |
+| `SWAP_API_URL` | Your AI image endpoint for the realistic swap | off (shows "coming soon") |
+| `SWAP_API_KEY` | Bearer token sent to it | none |
